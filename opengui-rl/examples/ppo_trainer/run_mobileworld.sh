@@ -1,5 +1,5 @@
 set -x
-export CUDA_VISIBLE_DEVICES=5,6,7
+export CUDA_VISIBLE_DEVICES=4,5,6,7
 export NCCL_P2P_DISABLE=1
 export iommu=pt
 export RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
@@ -8,56 +8,40 @@ export RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
 cd "$(dirname "$0")"
 
 # ============ User-configurable parameters ============
-model_path=<path-to-MAI-UI-2B>
-model_type=mai_ui
-data_dir=~/data/realdevice_online_rl/visual
-n_gpus=1
+model_path=<path-to-your-model>
+model_type=owl
+data_dir=~/data/mw_online_rl/visual
+n_gpus=4
 history_length=3
-max_steps=7
+max_steps=50
 save_freq=5
-total_epochs=1
-train_data_size=1
+total_epochs=3
+train_data_size=4
 val_data_size=1
-group_size=1
-adv_estimator=gigpo
-mode="mean_norm" # "mean_norm" or "mean_std_norm"
+adv_estimator=gae
 num_cpus_per_env_worker=0.10
-experiment_name=realdevice_gigpo
+experiment_name=ppo_mobileworld
 shuffle=False
 checkpoints_path=<path-to-save-checkpoints>
-server_file=../env_server/realdevice_server.txt
-
-# Real device ADB device IDs (run 'adb devices' to find these)
-# - Single device:   device=DEVICE_ID
-# - Multiple devices: device=DEVICE_ID1,DEVICE_ID2  (comma-separated, count must == train_batch_size * group_size)
-# - Auto-detect:      device=auto  (query server for connected devices)
-device=<your-device-id>
+data_source_dir=
+server_file=../env_server/mobileworld_server.txt
 
 # ============ Step reward judge parameters ============
-step_reward_judge=True
-step_reward_judge_base_url=<step-reward-judge-url>
-step_reward_judge_model_name=<step-reward-judge-model>
+step_reward_judge=False
+step_reward_judge_base_url=""
+step_reward_judge_model_name=""
 step_reward_judge_api_key=""
 
-# ============ Task eval judge parameters ============
-# VLM-based task completion evaluation
-# Called when agent outputs answer/terminate/status to determine if task succeeded
-# If enabled, score=1 → reward=1 + won=True; score=0 → reward=0 + won=False
-task_eval_judge=True
-task_eval_judge_base_url=<task-eval-judge-url>
-task_eval_judge_model_name=<task-eval-judge-model>
-task_eval_judge_api_key=""
+# ============ Periodic container restart parameters ============
+env_restart_enable=True
+env_restart_every_n_steps=15
+env_restart_wait=1200
 
-# No container restart for real device
-env_restart_enable=False
-
-# Task file (one task per line)
-task_file=../env_server/realdevice_tasks.txt
-
-# ============ Data preprocessing ============
-python ../data_preprocess/realdevice_onlinerl.py \
-    --task_file $task_file \
-    --total_epochs $total_epochs
+# ============ Data preprocessing with curriculum ============
+python ../data_preprocess/mw_onlinerl.py \
+    --curriculum --curriculum_mode interleave --hard_task_num 15 --exclude_google \
+    --batch_size $train_data_size --total_epochs $total_epochs \
+    ${data_source_dir:+--data_source $data_source_dir}
 
 HYDRA_FULL_ERROR=1 python3 -m verl.trainer.main_ppo \
     algorithm.adv_estimator=$adv_estimator \
@@ -75,14 +59,15 @@ HYDRA_FULL_ERROR=1 python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.model.path=$model_path \
     actor_rollout_ref.actor.optim.lr=1e-6 \
     actor_rollout_ref.model.use_remove_padding=True \
-    actor_rollout_ref.actor.ppo_mini_batch_size=4 \
+    actor_rollout_ref.actor.ppo_mini_batch_size=16 \
     actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1 \
-    actor_rollout_ref.actor.use_kl_loss=False \
+    actor_rollout_ref.actor.use_kl_loss=True \
+    actor_rollout_ref.actor.kl_loss_coef=0.01 \
     actor_rollout_ref.actor.kl_loss_type=low_var_kl \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \
     actor_rollout_ref.actor.fsdp_config.param_offload=True \
-    actor_rollout_ref.actor.fsdp_config.optimizer_offload=True \
-    actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1 \
+    actor_rollout_ref.actor.fsdp_config.optimizer_offload=False \
+    actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=4 \
     actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
     actor_rollout_ref.rollout.name=vllm \
     actor_rollout_ref.rollout.temperature=0.7 \
@@ -92,36 +77,36 @@ HYDRA_FULL_ERROR=1 python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.free_cache_engine=False \
     actor_rollout_ref.rollout.val_kwargs.temperature=0.4 \
     actor_rollout_ref.rollout.val_kwargs.do_sample=True \
-    actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=1 \
+    actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=4 \
     actor_rollout_ref.ref.fsdp_config.param_offload=True \
     actor_rollout_ref.actor.use_invalid_action_penalty=True \
     actor_rollout_ref.actor.invalid_action_penalty_coef=0.1 \
+    critic.optim.lr=1e-5 \
+    critic.model.use_remove_padding=True \
+    critic.model.path=$model_path \
+    critic.model.enable_gradient_checkpointing=True \
+    critic.ppo_micro_batch_size_per_gpu=1 \
+    critic.model.fsdp_config.param_offload=True \
+    critic.model.fsdp_config.optimizer_offload=False \
     algorithm.use_kl_in_reward=False \
-    algorithm.gamma=0.95 \
-    algorithm.gigpo.step_advantage_w=1.0 \
-    algorithm.gigpo.mode=$mode \
-    env.env_name=RealDevice \
+    env.env_name=MobileWorld \
     env.model_type=$model_type \
     env.server_file=$server_file \
-    +env.device=$device \
     env.seed=0 \
     env.history_length=$history_length \
     env.max_steps=$max_steps \
-    env.rollout.n=$group_size \
     env.resources_per_worker.num_cpus=$num_cpus_per_env_worker \
     env.step_reward_judge=$step_reward_judge \
     env.step_reward_judge_base_url=$step_reward_judge_base_url \
     env.step_reward_judge_model_name=$step_reward_judge_model_name \
     env.step_reward_judge_api_key=$step_reward_judge_api_key \
-    env.task_eval_judge=$task_eval_judge \
-    env.task_eval_judge_base_url=$task_eval_judge_base_url \
-    env.task_eval_judge_model_name=$task_eval_judge_model_name \
-    env.task_eval_judge_api_key=$task_eval_judge_api_key \
     env.restart.enable=$env_restart_enable \
+    env.restart.every_n_steps=$env_restart_every_n_steps \
+    env.restart.wait_after_run=$env_restart_wait \
     trainer.critic_warmup=0 \
     trainer.default_local_dir=$checkpoints_path \
     trainer.logger=['console','swanlab'] \
-    trainer.project_name='online_rl_realdevice' \
+    trainer.project_name='online_rl_mobile_world' \
     trainer.experiment_name=$experiment_name \
     trainer.n_gpus_per_node=$n_gpus \
     trainer.nnodes=1 \

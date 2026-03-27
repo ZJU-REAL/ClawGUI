@@ -46,7 +46,6 @@ def run_ppo(config) -> None:
         # Add isolation parameters to avoid connecting to existing Ray instances
         # Use unique temp directory to avoid permission issues with other users' Ray sessions
         ray_temp_dir = f"/tmp/ray_{os.getlogin()}_{os.getpid()}"
-        # ray_temp_dir = f"/data/zju-129/tangfei/tmp/ray_{os.getlogin()}_{os.getpid()}"
         os.makedirs(ray_temp_dir, exist_ok=True)
         ray_init_kwargs = OmegaConf.create({
             **ray_init_kwargs, 

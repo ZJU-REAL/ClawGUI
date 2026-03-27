@@ -1,5 +1,5 @@
 set -x
-export CUDA_VISIBLE_DEVICES=5,6,7
+export CUDA_VISIBLE_DEVICES=4,5,6,7
 export NCCL_P2P_DISABLE=1
 export iommu=pt
 export RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
@@ -8,21 +8,21 @@ export RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
 cd "$(dirname "$0")"
 
 # ============ User-configurable parameters ============
-model_path=<path-to-MAI-UI-2B>
+model_path=<path-to-your-model>
 model_type=mai_ui
 data_dir=~/data/realdevice_online_rl/visual
-n_gpus=1
+n_gpus=2
 history_length=3
 max_steps=7
 save_freq=5
 total_epochs=1
-train_data_size=1
+train_data_size=2
 val_data_size=1
 group_size=1
 adv_estimator=gigpo
-mode="mean_norm" # "mean_norm" or "mean_std_norm"
+mode="mean_std_norm" # "mean_norm" or "mean_std_norm"
 num_cpus_per_env_worker=0.10
-experiment_name=realdevice_gigpo
+experiment_name=gigpo_dynamic_realdevice
 shuffle=False
 checkpoints_path=<path-to-save-checkpoints>
 server_file=../env_server/realdevice_server.txt
@@ -32,6 +32,12 @@ server_file=../env_server/realdevice_server.txt
 # - Multiple devices: device=DEVICE_ID1,DEVICE_ID2  (comma-separated, count must == train_batch_size * group_size)
 # - Auto-detect:      device=auto  (query server for connected devices)
 device=<your-device-id>
+
+# ============ Dynamic sampling parameters ============
+clip_ratio_low=0.2
+clip_ratio_high=0.28
+enable_filter_groups=True
+max_num_gen_batches=10
 
 # ============ Step reward judge parameters ============
 step_reward_judge=True
@@ -77,8 +83,11 @@ HYDRA_FULL_ERROR=1 python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.model.use_remove_padding=True \
     actor_rollout_ref.actor.ppo_mini_batch_size=4 \
     actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1 \
-    actor_rollout_ref.actor.use_kl_loss=False \
+    actor_rollout_ref.actor.use_kl_loss=True \
+    actor_rollout_ref.actor.kl_loss_coef=0.01 \
     actor_rollout_ref.actor.kl_loss_type=low_var_kl \
+    actor_rollout_ref.actor.clip_ratio_low=${clip_ratio_low} \
+    actor_rollout_ref.actor.clip_ratio_high=${clip_ratio_high} \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \
     actor_rollout_ref.actor.fsdp_config.param_offload=True \
     actor_rollout_ref.actor.fsdp_config.optimizer_offload=True \
@@ -100,6 +109,8 @@ HYDRA_FULL_ERROR=1 python3 -m verl.trainer.main_ppo \
     algorithm.gamma=0.95 \
     algorithm.gigpo.step_advantage_w=1.0 \
     algorithm.gigpo.mode=$mode \
+    algorithm.filter_groups.enable=${enable_filter_groups} \
+    algorithm.filter_groups.max_num_gen_batches=${max_num_gen_batches} \
     env.env_name=RealDevice \
     env.model_type=$model_type \
     env.server_file=$server_file \

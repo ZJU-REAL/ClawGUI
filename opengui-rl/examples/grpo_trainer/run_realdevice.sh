@@ -4,8 +4,13 @@ export NCCL_P2P_DISABLE=1
 export iommu=pt
 export RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
 
+# cd to script directory so relative paths work from any working directory
+cd "$(dirname "$0")"
+
 # ============ User-configurable parameters ============
 model_path=<path-to-MAI-UI-2B>
+model_type=mai_ui
+data_dir=~/data/realdevice_online_rl/visual
 n_gpus=2
 history_length=3
 max_steps=7
@@ -19,7 +24,7 @@ num_cpus_per_env_worker=0.10
 experiment_name=realdevice_grpo
 shuffle=False
 checkpoints_path=<path-to-save-checkpoints>
-server_file=./realdevice_server.txt
+server_file=../env_server/realdevice_server.txt
 
 # Real device ADB device IDs (run 'adb devices' to find these)
 # - Single device:   device=DEVICE_ID
@@ -46,7 +51,7 @@ task_eval_judge_api_key=""
 env_restart_enable=False
 
 # Task file (one task per line)
-task_file=./realdevice_tasks.txt
+task_file=../env_server/realdevice_tasks.txt
 
 # ============ Data preprocessing ============
 python ../data_preprocess/realdevice_onlinerl.py \
@@ -55,8 +60,8 @@ python ../data_preprocess/realdevice_onlinerl.py \
 
 HYDRA_FULL_ERROR=1 python3 -m verl.trainer.main_ppo \
     algorithm.adv_estimator=$adv_estimator \
-    data.train_files=<path-to-data>/train.parquet \
-    data.val_files=<path-to-data>/test.parquet \
+    data.train_files=$data_dir/train.parquet \
+    data.val_files=$data_dir/test.parquet \
     data.train_batch_size=$train_data_size \
     data.val_batch_size=$val_data_size \
     data.shuffle=$shuffle \
@@ -93,7 +98,7 @@ HYDRA_FULL_ERROR=1 python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.actor.invalid_action_penalty_coef=0.1 \
     algorithm.use_kl_in_reward=False \
     env.env_name=RealDevice \
-    env.model_type=mai_ui \
+    env.model_type=$model_type \
     env.server_file=$server_file \
     +env.device=$device \
     env.seed=0 \

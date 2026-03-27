@@ -1,5 +1,5 @@
 set -x
-export CUDA_VISIBLE_DEVICES=5,6,7
+export CUDA_VISIBLE_DEVICES=4,5,6,7
 export NCCL_P2P_DISABLE=1
 export iommu=pt
 export RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
@@ -8,21 +8,19 @@ export RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
 cd "$(dirname "$0")"
 
 # ============ User-configurable parameters ============
-model_path=<path-to-MAI-UI-2B>
-model_type=mai_ui
+model_path=<path-to-your-model>
+model_type=owl
 data_dir=~/data/realdevice_online_rl/visual
-n_gpus=1
+n_gpus=2
 history_length=3
 max_steps=7
 save_freq=5
 total_epochs=1
-train_data_size=1
+train_data_size=2
 val_data_size=1
-group_size=1
-adv_estimator=gigpo
-mode="mean_norm" # "mean_norm" or "mean_std_norm"
+adv_estimator=gae
 num_cpus_per_env_worker=0.10
-experiment_name=realdevice_gigpo
+experiment_name=ppo_realdevice
 shuffle=False
 checkpoints_path=<path-to-save-checkpoints>
 server_file=../env_server/realdevice_server.txt
@@ -34,9 +32,9 @@ server_file=../env_server/realdevice_server.txt
 device=<your-device-id>
 
 # ============ Step reward judge parameters ============
-step_reward_judge=True
-step_reward_judge_base_url=<step-reward-judge-url>
-step_reward_judge_model_name=<step-reward-judge-model>
+step_reward_judge=False
+step_reward_judge_base_url=""
+step_reward_judge_model_name=""
 step_reward_judge_api_key=""
 
 # ============ Task eval judge parameters ============
@@ -77,7 +75,8 @@ HYDRA_FULL_ERROR=1 python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.model.use_remove_padding=True \
     actor_rollout_ref.actor.ppo_mini_batch_size=4 \
     actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1 \
-    actor_rollout_ref.actor.use_kl_loss=False \
+    actor_rollout_ref.actor.use_kl_loss=True \
+    actor_rollout_ref.actor.kl_loss_coef=0.01 \
     actor_rollout_ref.actor.kl_loss_type=low_var_kl \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \
     actor_rollout_ref.actor.fsdp_config.param_offload=True \
@@ -96,10 +95,14 @@ HYDRA_FULL_ERROR=1 python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.ref.fsdp_config.param_offload=True \
     actor_rollout_ref.actor.use_invalid_action_penalty=True \
     actor_rollout_ref.actor.invalid_action_penalty_coef=0.1 \
+    critic.optim.lr=1e-5 \
+    critic.model.use_remove_padding=True \
+    critic.model.path=$model_path \
+    critic.model.enable_gradient_checkpointing=True \
+    critic.ppo_micro_batch_size_per_gpu=1 \
+    critic.model.fsdp_config.param_offload=True \
+    critic.model.fsdp_config.optimizer_offload=True \
     algorithm.use_kl_in_reward=False \
-    algorithm.gamma=0.95 \
-    algorithm.gigpo.step_advantage_w=1.0 \
-    algorithm.gigpo.mode=$mode \
     env.env_name=RealDevice \
     env.model_type=$model_type \
     env.server_file=$server_file \
@@ -107,7 +110,6 @@ HYDRA_FULL_ERROR=1 python3 -m verl.trainer.main_ppo \
     env.seed=0 \
     env.history_length=$history_length \
     env.max_steps=$max_steps \
-    env.rollout.n=$group_size \
     env.resources_per_worker.num_cpus=$num_cpus_per_env_worker \
     env.step_reward_judge=$step_reward_judge \
     env.step_reward_judge_base_url=$step_reward_judge_base_url \

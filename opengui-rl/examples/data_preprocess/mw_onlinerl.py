@@ -48,13 +48,15 @@ if __name__ == '__main__':
     parser.add_argument('--exclude_google', action='store_true', help='Exclude tasks whose Apps column contains Chrome')
     parser.add_argument('--batch_size', default=2, type=int, help='Training batch size per step (for curriculum scheduling)')
     parser.add_argument('--total_epochs', default=3, type=int, help='Total training epochs (for curriculum scheduling)')
+    parser.add_argument('--task_file', default='../env_server/mobileworld_tasks.xlsx', help='Path to MobileWorld tasks xlsx file')
+    parser.add_argument('--data_source', default=None, help='Path to geometry3k dataset (default: ~/data/geometry3k)')
 
     args = parser.parse_args()
     print(f"processing data for mode: {args.mode}")
     args.local_dir = os.path.join(args.local_dir, args.mode)
 
     # Load MobileWorld tasks
-    mw_tasks_path = '/home/tangfei/online_rl/MobileWorld/mobileworld_tasks.xlsx'
+    mw_tasks_path = args.task_file
     mw_tasks_df = pd.read_excel(mw_tasks_path)
     
     # Filter out tasks containing "mcp" or "interaction" in tag column
@@ -308,7 +310,7 @@ if __name__ == '__main__':
         print(f"Auto-adjusting train_data_size: {args.train_data_size} -> {actual_task_count}")
         args.train_data_size = actual_task_count
 
-    data_source = '/home/tangfei/online_rl/verl-agent/data/geometry3k'
+    data_source = args.data_source if args.data_source else os.path.expanduser('~/data/geometry3k')
     """
     **NOTE**: This is a frequently asked question.
     We do NOT use the data in 'hiyouga/geometry3k', instead we only use it to indicate the modality and the data size.

@@ -42,6 +42,8 @@ install_requires = [
     "wandb",
     "packaging>=20.0",
     "qwen-vl-utils[decord]",
+    "openpyxl",
+    "swanlab",
 ]
 
 TEST_REQUIRES = ["pytest", "pre-commit", "py-spy"]

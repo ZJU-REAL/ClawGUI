@@ -93,7 +93,7 @@ if __name__ == '__main__':
     # (Same approach as mw_onlinerl.py — we only use the dataset to
     #  get the correct schema; actual task data comes from env_kwargs)
     # ============================================================
-    data_source = '/home/tangfei/online_rl/verl-agent/data/geometry3k'
+    data_source = args.data_source if args.data_source else os.path.expanduser('~/data/geometry3k')
     dataset = datasets.load_dataset(data_source)
 
     train_dataset = dataset['train'].select(range(train_data_size))
