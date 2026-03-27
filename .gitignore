@@ -27,6 +27,19 @@ Thumbs.db
 *.pdf
 *.gif
 
+# Training artifacts
+swanlog/
+.mypy_cache/
+outputs/
+wandb/
+*.ckpt
+*.pt
+*.pth
+.ipynb_checkpoints/
+.venv/
+venv/
+.nfs*
+
 # Data (暂不上传)
 opengui-eval/MobileWorld/
 opengui-rl/data/geometry3k/
