@@ -138,7 +138,7 @@ class GUIToolConfig(Base):
     """GUI agent tool configuration for mobile device automation via PhoneAgent."""
 
     enable: bool = False
-    phone_agent_dir: str = ""          # Path to OpenClaw-GUI root directory
+    phone_agent_dir: str = "."          # Path to OpenClaw-GUI root directory
     device_type: str = "adb"           # adb / hdc
     device_id: str | None = None       # Specific device ID (auto-detect if None)
     max_steps: int = 50
