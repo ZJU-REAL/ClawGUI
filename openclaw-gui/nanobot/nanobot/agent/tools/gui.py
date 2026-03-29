@@ -45,6 +45,9 @@ class GUITool(Tool):
         # Prompt template controls
         prompt_template_lang: str = "cn",
         prompt_template_style: str = "autoglm",
+        # Trace
+        trace_enabled: bool = False,
+        trace_dir: str = "gui_trace",
     ):
         self.phone_agent_dir = phone_agent_dir
         self.device_type = device_type
@@ -61,6 +64,8 @@ class GUITool(Tool):
         self.gui_model_name = gui_model_name
         self.prompt_template_lang = prompt_template_lang
         self.prompt_template_style = prompt_template_style
+        self.trace_enabled = trace_enabled
+        self.trace_dir = trace_dir
 
     @property
     def name(self) -> str:
@@ -248,6 +253,8 @@ class GUITool(Tool):
             verbose=True,
             enable_memory=True,
             model_type=self.prompt_template_style,
+            trace_enabled=self.trace_enabled,
+            trace_dir=self.trace_dir,
         )
 
         # Auto-confirm for nanobot context (no interactive stdin)

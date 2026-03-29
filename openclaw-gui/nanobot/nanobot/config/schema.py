@@ -151,6 +151,9 @@ class GUIToolConfig(Base):
     # Prompt template controls
     prompt_template_lang: str = "cn"   # Language for prompt template: "cn" or "en"
     prompt_template_style: str = "autoglm"  # Prompt template style: autoglm / uitars / qwenvl / maiui / guiowl
+    # Execution trace
+    trace_enabled: bool = False  # Write step-by-step trace to gui_trace/
+    trace_dir: str = "gui_trace"  # Root directory for episode folders
 
     @model_validator(mode="after")
     def _check_external_model_config(self) -> "GUIToolConfig":

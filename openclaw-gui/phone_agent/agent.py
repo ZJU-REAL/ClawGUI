@@ -29,6 +29,9 @@ class AgentConfig:
     user_id: str = "default"
     # Model type: "auto" for auto-detect, or explicit type like "qwenvl", "uitars", etc.
     model_type: str = "auto"
+    # Trace configuration
+    trace_enabled: bool = False
+    trace_dir: str = "gui_trace"
 
     def __post_init__(self):
         if self.system_prompt is None:
@@ -129,7 +132,13 @@ class PhoneAgent:
         self._context: list[dict[str, Any]] = []
         self._step_count = 0
         self._current_task = ""
-        
+
+        # Initialize tracer if enabled
+        self.tracer = None
+        if self.agent_config.trace_enabled:
+            from phone_agent.tracer import GUITracer
+            self.tracer = GUITracer(trace_dir=self.agent_config.trace_dir)
+
         # Initialize memory manager if enabled
         self.memory_manager = None
         if self.agent_config.enable_memory:
@@ -178,13 +187,17 @@ class PhoneAgent:
         self._context = []
         self._step_count = 0
         self._current_task = task
-        
+
         # Clear action history for QwenVL handler/adapter
         if self._specialized_handler is not None and hasattr(self._specialized_handler, 'clear_history'):
             self._specialized_handler.clear_history()
         if hasattr(self._adapter, 'clear_history'):
             self._adapter.clear_history()
-        
+
+        # Start tracing
+        if self.tracer:
+            self.tracer.start_task(task, model=self.model_config.model_name)
+
         # Start memory tracking
         if self.memory_manager:
             self.memory_manager.start_task(task)
@@ -193,11 +206,15 @@ class PhoneAgent:
         result = self._execute_step(task, is_first=True)
 
         if result.finished:
-            # Record successful task
             if self.memory_manager:
                 self.memory_manager.end_task(
                     success=result.success,
                     result=result.message or "Task completed"
+                )
+            if self.tracer:
+                self.tracer.end_task(
+                    result=result.message or "Task completed",
+                    total_steps=self._step_count,
                 )
             return result.message or "Task completed"
 
@@ -206,18 +223,24 @@ class PhoneAgent:
             result = self._execute_step(is_first=False)
 
             if result.finished:
-                # Record successful task
                 if self.memory_manager:
                     self.memory_manager.end_task(
                         success=result.success,
                         result=result.message or "Task completed"
                     )
+                if self.tracer:
+                    self.tracer.end_task(
+                        result=result.message or "Task completed",
+                        total_steps=self._step_count,
+                    )
                 return result.message or "Task completed"
 
-        # Record task timeout
+        # Task timeout
         if self.memory_manager:
             self.memory_manager.end_task(success=False, result="Max steps reached")
-        
+        if self.tracer:
+            self.tracer.end_task(result="Max steps reached", total_steps=self._step_count)
+
         return "Max steps reached"
 
     def step(self, task: str | None = None) -> StepResult:
@@ -533,6 +556,16 @@ class PhoneAgent:
 
         # Check if finished
         finished = action.get("_metadata") == "finish" or result.should_finish
+
+        # Record step trace
+        if self.tracer:
+            self.tracer.record_step(
+                step=self._step_count,
+                screenshot_base64=screenshot.base64_data,
+                model_raw_output=response.raw_content,
+                action=action,
+                finished=finished,
+            )
 
         if finished and self.agent_config.verbose:
             msgs = get_messages(self.agent_config.lang)

@@ -162,6 +162,8 @@ class AgentLoop:
                 gui_model_name=self._gui_config.gui_model_name,
                 prompt_template_lang=self._gui_config.prompt_template_lang,
                 prompt_template_style=self._gui_config.prompt_template_style,
+                trace_enabled=self._gui_config.trace_enabled,
+                trace_dir=self._gui_config.trace_dir,
             ))
 
     async def _connect_mcp(self) -> None:
