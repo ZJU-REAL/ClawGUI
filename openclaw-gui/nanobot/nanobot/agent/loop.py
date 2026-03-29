@@ -146,10 +146,9 @@ class AgentLoop:
             self.tools.register(CronTool(self.cron_service))
 
         # Register GUI tool if enabled
-        if self._gui_config and self._gui_config.enable and self._gui_config.phone_agent_dir:
+        if self._gui_config and self._gui_config.enable:
             from nanobot.agent.tools.gui import GUITool
             self.tools.register(GUITool(
-                phone_agent_dir=self._gui_config.phone_agent_dir,
                 device_type=self._gui_config.device_type,
                 device_id=self._gui_config.device_id,
                 max_steps=self._gui_config.max_steps,

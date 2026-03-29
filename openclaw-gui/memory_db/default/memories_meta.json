@@ -2982,5 +2982,296 @@
       ],
       "task_summary": "打开 QQ 音乐，搜索王一博的歌曲并播放，播放几秒后关闭 QQ 音乐"
     }
+  },
+  "a795bb4ba644681f": {
+    "id": "a795bb4ba644681f",
+    "content": "用户使用了应用: AndroidSystemSettings",
+    "memory_type": "app_usage",
+    "created_at": "2026-03-29T23:54:28.378122",
+    "last_accessed": "2026-03-29T23:54:28.378129",
+    "access_count": 1,
+    "importance": 0.3,
+    "metadata": {
+      "app_name": "AndroidSystemSettings",
+      "timestamp": "2026-03-29T23:54:28.377521"
+    }
+  },
+  "2a2446923cae9485": {
+    "id": "2a2446923cae9485",
+    "content": "从执行过程推断: 通常用于切换该功能",
+    "memory_type": "user_preference",
+    "created_at": "2026-03-29T23:54:28.399030",
+    "last_accessed": "2026-03-29T23:54:28.399033",
+    "access_count": 1,
+    "importance": 0.4,
+    "metadata": {
+      "category": "time",
+      "source": "auto_thinking",
+      "context": "用户要求关闭飞行模式。当前页面显示“移动网络”设置界面，“飞行模式”选项存在且其右侧有开关控件（通常用于切换该功能）。虽然无法从静态描述中100%确定当前开关的物理位置（开/关），但在实际交互场景中，"
+    }
+  },
+  "92fd3b70be0d6f7a": {
+    "id": "92fd3b70be0d6f7a",
+    "content": "用户使用了应用: AndroidSystemSettings",
+    "memory_type": "app_usage",
+    "created_at": "2026-03-29T23:58:40.763117",
+    "last_accessed": "2026-03-29T23:58:40.763119",
+    "access_count": 1,
+    "importance": 0.3,
+    "metadata": {
+      "app_name": "AndroidSystemSettings",
+      "timestamp": "2026-03-29T23:58:40.762991"
+    }
+  },
+  "51e7a44f024dc600": {
+    "id": "51e7a44f024dc600",
+    "content": "任务: 关闭飞行模式 | 结果: 飞行模式已关闭 | 成功",
+    "memory_type": "task_history",
+    "created_at": "2026-03-29T23:58:40.771046",
+    "last_accessed": "2026-03-29T23:58:40.771048",
+    "access_count": 1,
+    "importance": 0.6,
+    "metadata": {
+      "task": "关闭飞行模式",
+      "result": "飞行模式已关闭",
+      "success": true,
+      "duration": 3.909885,
+      "steps": 1,
+      "apps_used": [
+        "androidsystemsettings"
+      ],
+      "contacts_mentioned": []
+    }
+  },
+  "76c52edd0e0c227b": {
+    "id": "76c52edd0e0c227b",
+    "content": "用户使用了应用: AndroidSystemSettings",
+    "memory_type": "app_usage",
+    "created_at": "2026-03-30T00:01:39.956784",
+    "last_accessed": "2026-03-30T00:01:39.956787",
+    "access_count": 1,
+    "importance": 0.3,
+    "metadata": {
+      "app_name": "AndroidSystemSettings",
+      "timestamp": "2026-03-30T00:01:39.956480"
+    }
+  },
+  "66d4153c111f2617": {
+    "id": "66d4153c111f2617",
+    "content": "任务: 打开飞行模式 | 结果: 飞行模式已打开 | 成功",
+    "memory_type": "task_history",
+    "created_at": "2026-03-30T00:01:43.785903",
+    "last_accessed": "2026-03-30T00:01:43.785906",
+    "access_count": 1,
+    "importance": 0.6,
+    "metadata": {
+      "task": "打开飞行模式",
+      "result": "飞行模式已打开",
+      "success": true,
+      "duration": 9.357541,
+      "steps": 2,
+      "apps_used": [
+        "androidsystemsettings"
+      ],
+      "contacts_mentioned": []
+    }
+  },
+  "bf279d848b8816f3": {
+    "id": "bf279d848b8816f3",
+    "content": "用户使用了应用: AndroidSystemSettings",
+    "memory_type": "app_usage",
+    "created_at": "2026-03-30T00:03:16.709983",
+    "last_accessed": "2026-03-30T00:03:16.709988",
+    "access_count": 1,
+    "importance": 0.3,
+    "metadata": {
+      "app_name": "AndroidSystemSettings",
+      "timestamp": "2026-03-30T00:03:16.709728"
+    }
+  },
+  "2c3be893a63d5d40": {
+    "id": "2c3be893a63d5d40",
+    "content": "任务: 关闭飞行模式 | 结果: 飞行模式已关闭 | 成功",
+    "memory_type": "task_history",
+    "created_at": "2026-03-30T00:03:20.610496",
+    "last_accessed": "2026-03-30T00:03:20.610499",
+    "access_count": 1,
+    "importance": 0.6,
+    "metadata": {
+      "task": "关闭飞行模式",
+      "result": "飞行模式已关闭",
+      "success": true,
+      "duration": 10.112874,
+      "steps": 2,
+      "apps_used": [
+        "androidsystemsettings"
+      ],
+      "contacts_mentioned": []
+    }
+  },
+  "bcb599f4d0601682": {
+    "id": "bcb599f4d0601682",
+    "content": "用户使用了应用: AndroidSystemSettings",
+    "memory_type": "app_usage",
+    "created_at": "2026-03-30T00:04:24.852555",
+    "last_accessed": "2026-03-30T00:04:24.852560",
+    "access_count": 1,
+    "importance": 0.3,
+    "metadata": {
+      "app_name": "AndroidSystemSettings",
+      "timestamp": "2026-03-30T00:04:24.852137"
+    }
+  },
+  "4d0a05178ccf99ff": {
+    "id": "4d0a05178ccf99ff",
+    "content": "任务: 打开飞行模式 | 结果: 飞行模式已开启 | 成功",
+    "memory_type": "task_history",
+    "created_at": "2026-03-30T00:04:28.746091",
+    "last_accessed": "2026-03-30T00:04:28.746092",
+    "access_count": 1,
+    "importance": 0.6,
+    "metadata": {
+      "task": "打开飞行模式",
+      "result": "飞行模式已开启",
+      "success": true,
+      "duration": 9.430642,
+      "steps": 2,
+      "apps_used": [
+        "androidsystemsettings"
+      ],
+      "contacts_mentioned": []
+    }
+  },
+  "19883c7a014a18ea": {
+    "id": "19883c7a014a18ea",
+    "content": "用户使用了应用: AndroidSystemSettings",
+    "memory_type": "app_usage",
+    "created_at": "2026-03-30T00:05:10.691412",
+    "last_accessed": "2026-03-30T00:05:10.691415",
+    "access_count": 1,
+    "importance": 0.3,
+    "metadata": {
+      "app_name": "AndroidSystemSettings",
+      "timestamp": "2026-03-30T00:05:10.690993"
+    }
+  },
+  "0faf935aaeb78055": {
+    "id": "0faf935aaeb78055",
+    "content": "任务: 关闭飞行模式 | 结果: 飞行模式已关闭 | 成功",
+    "memory_type": "task_history",
+    "created_at": "2026-03-30T00:05:14.235629",
+    "last_accessed": "2026-03-30T00:05:14.235631",
+    "access_count": 1,
+    "importance": 0.6,
+    "metadata": {
+      "task": "关闭飞行模式",
+      "result": "飞行模式已关闭",
+      "success": true,
+      "duration": 8.874122,
+      "steps": 2,
+      "apps_used": [
+        "androidsystemsettings"
+      ],
+      "contacts_mentioned": []
+    }
+  },
+  "8ecf73dceababf3a": {
+    "id": "8ecf73dceababf3a",
+    "content": "用户使用了应用: AndroidSystemSettings",
+    "memory_type": "app_usage",
+    "created_at": "2026-03-30T00:07:03.559536",
+    "last_accessed": "2026-03-30T00:07:03.559539",
+    "access_count": 1,
+    "importance": 0.3,
+    "metadata": {
+      "app_name": "AndroidSystemSettings",
+      "timestamp": "2026-03-30T00:07:03.559209"
+    }
+  },
+  "1a8985554ab5b3cb": {
+    "id": "1a8985554ab5b3cb",
+    "content": "任务: 打开飞行模式 | 结果: 飞行模式已开启 | 成功",
+    "memory_type": "task_history",
+    "created_at": "2026-03-30T00:07:07.423243",
+    "last_accessed": "2026-03-30T00:07:07.423244",
+    "access_count": 1,
+    "importance": 0.6,
+    "metadata": {
+      "task": "打开飞行模式",
+      "result": "飞行模式已开启",
+      "success": true,
+      "duration": 9.27466,
+      "steps": 2,
+      "apps_used": [
+        "androidsystemsettings"
+      ],
+      "contacts_mentioned": []
+    }
+  },
+  "e5fb00f28ddf172e": {
+    "id": "e5fb00f28ddf172e",
+    "content": "用户使用了应用: AndroidSystemSettings",
+    "memory_type": "app_usage",
+    "created_at": "2026-03-30T00:09:25.828161",
+    "last_accessed": "2026-03-30T00:09:25.828165",
+    "access_count": 1,
+    "importance": 0.3,
+    "metadata": {
+      "app_name": "AndroidSystemSettings",
+      "timestamp": "2026-03-30T00:09:25.827747"
+    }
+  },
+  "e17dfb1d5d3a2806": {
+    "id": "e17dfb1d5d3a2806",
+    "content": "任务: 关闭飞行模式 | 结果: 飞行模式已关闭 | 成功",
+    "memory_type": "task_history",
+    "created_at": "2026-03-30T00:09:29.400364",
+    "last_accessed": "2026-03-30T00:09:29.400365",
+    "access_count": 1,
+    "importance": 0.6,
+    "metadata": {
+      "task": "关闭飞行模式",
+      "result": "飞行模式已关闭",
+      "success": true,
+      "duration": 9.006424,
+      "steps": 2,
+      "apps_used": [
+        "androidsystemsettings"
+      ],
+      "contacts_mentioned": []
+    }
+  },
+  "521bb2fae70aa336": {
+    "id": "521bb2fae70aa336",
+    "content": "用户使用了应用: AndroidSystemSettings",
+    "memory_type": "app_usage",
+    "created_at": "2026-03-30T00:10:28.577972",
+    "last_accessed": "2026-03-30T00:10:28.577974",
+    "access_count": 1,
+    "importance": 0.3,
+    "metadata": {
+      "app_name": "AndroidSystemSettings",
+      "timestamp": "2026-03-30T00:10:28.577722"
+    }
+  },
+  "b9242971f42f06b2": {
+    "id": "b9242971f42f06b2",
+    "content": "任务: 打开飞行模式 | 结果: 飞行模式已开启 | 成功",
+    "memory_type": "task_history",
+    "created_at": "2026-03-30T00:10:32.178169",
+    "last_accessed": "2026-03-30T00:10:32.178173",
+    "access_count": 1,
+    "importance": 0.6,
+    "metadata": {
+      "task": "打开飞行模式",
+      "result": "飞行模式已开启",
+      "success": true,
+      "duration": 9.185577,
+      "steps": 2,
+      "apps_used": [
+        "androidsystemsettings"
+      ],
+      "contacts_mentioned": []
+    }
   }
 }

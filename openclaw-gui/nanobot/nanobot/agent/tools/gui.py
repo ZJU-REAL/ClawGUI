@@ -28,7 +28,6 @@ class GUITool(Tool):
 
     def __init__(
         self,
-        phone_agent_dir: str,
         device_type: str = "adb",
         device_id: str | None = None,
         max_steps: int = 50,
@@ -49,7 +48,6 @@ class GUITool(Tool):
         trace_enabled: bool = False,
         trace_dir: str = "gui_trace",
     ):
-        self.phone_agent_dir = phone_agent_dir
         self.device_type = device_type
         self.device_id = device_id
         self.max_steps = max_steps
@@ -121,7 +119,6 @@ class GUITool(Tool):
         device_check_error = await self._check_device_connection()
         if device_check_error:
             return device_check_error
-
         # --- 2. Resolve model config ---
         if self.use_external_model:
             if not self.gui_api_key:
@@ -224,11 +221,6 @@ class GUITool(Tool):
         max_steps: int,
     ) -> str:
         """Run PhoneAgent synchronously (called via asyncio.to_thread)."""
-
-        # Ensure phone_agent package is importable
-        agent_dir = str(Path(self.phone_agent_dir).resolve())
-        if agent_dir not in sys.path:
-            sys.path.insert(0, agent_dir)
 
         from phone_agent import PhoneAgent
         from phone_agent.agent import AgentConfig
