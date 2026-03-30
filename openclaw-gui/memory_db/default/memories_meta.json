@@ -3273,5 +3273,71 @@
       ],
       "contacts_mentioned": []
     }
+  },
+  "03064a40cf6708a3": {
+    "id": "03064a40cf6708a3",
+    "content": "用户使用了应用: AndroidSystemSettings",
+    "memory_type": "app_usage",
+    "created_at": "2026-03-30T23:29:05.149318",
+    "last_accessed": "2026-03-30T23:29:05.149322",
+    "access_count": 1,
+    "importance": 0.3,
+    "metadata": {
+      "app_name": "AndroidSystemSettings",
+      "timestamp": "2026-03-30T23:29:05.148960"
+    }
+  },
+  "96245fa7eec376c6": {
+    "id": "96245fa7eec376c6",
+    "content": "任务: 打开手机的 WiFi 设置并开启 WiFi | 结果: Task success | 成功",
+    "memory_type": "task_history",
+    "created_at": "2026-03-30T23:29:17.878354",
+    "last_accessed": "2026-03-30T23:29:17.878402",
+    "access_count": 1,
+    "importance": 0.6,
+    "metadata": {
+      "task": "打开手机的 WiFi 设置并开启 WiFi",
+      "result": "Task success",
+      "success": true,
+      "duration": 18.679259,
+      "steps": 3,
+      "apps_used": [
+        "androidsystemsettings"
+      ],
+      "contacts_mentioned": []
+    }
+  },
+  "f3df972ddf6586a2": {
+    "id": "f3df972ddf6586a2",
+    "content": "用户使用了应用: AndroidSystemSettings",
+    "memory_type": "app_usage",
+    "created_at": "2026-03-30T23:29:37.241633",
+    "last_accessed": "2026-03-30T23:29:37.241640",
+    "access_count": 1,
+    "importance": 0.3,
+    "metadata": {
+      "app_name": "AndroidSystemSettings",
+      "timestamp": "2026-03-30T23:29:37.241295"
+    }
+  },
+  "664ca3b5f334d736": {
+    "id": "664ca3b5f334d736",
+    "content": "任务: 打开手机的 WiFi 设置并开启 WiFi | 结果: WiFi 已开启 | 成功",
+    "memory_type": "task_history",
+    "created_at": "2026-03-30T23:29:37.258001",
+    "last_accessed": "2026-03-30T23:29:37.258004",
+    "access_count": 1,
+    "importance": 0.6,
+    "metadata": {
+      "task": "打开手机的 WiFi 设置并开启 WiFi",
+      "result": "WiFi 已开启",
+      "success": true,
+      "duration": 3.994462,
+      "steps": 1,
+      "apps_used": [
+        "androidsystemsettings"
+      ],
+      "contacts_mentioned": []
+    }
   }
 }
