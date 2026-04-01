@@ -9,6 +9,35 @@ torch>=2.8.0
 transformers>=4.57.3
 ```
 
+## Download Benchmark Images
+
+The benchmark images are hosted on Hugging Face. Download and extract them before running evaluation:
+
+```bash
+# Install huggingface_hub if needed
+pip install huggingface_hub
+
+# Download the image archive
+huggingface-cli download johnzqlu/opengui-eval image.tar.gz --repo-type dataset --local-dir .
+
+# Extract into opengui-eval/image/
+tar -xzf image.tar.gz
+```
+
+After extraction, you should have the following structure:
+
+```
+opengui-eval/
+└── image/
+    ├── mmbench-gui/
+    ├── osworld-g/
+    ├── screenspot-pro/
+    ├── screenspot-v2/
+    └── uivision/
+```
+
+These images are required by all benchmarks during inference.
+
 ## Project Structure
 
 ```

@@ -9,6 +9,35 @@ torch>=2.8.0
 transformers>=4.57.3
 ```
 
+## 下载 Benchmark 图片
+
+评测所需的图片托管在 Hugging Face 上，运行评测前请先下载并解压：
+
+```bash
+# 安装 huggingface_hub（如未安装）
+pip install huggingface_hub
+
+# 下载图片压缩包
+huggingface-cli download johnzqlu/opengui-eval image.tar.gz --repo-type dataset --local-dir .
+
+# 解压到 opengui-eval/image/
+tar -xzf image.tar.gz
+```
+
+解压后的目录结构如下：
+
+```
+opengui-eval/
+└── image/
+    ├── mmbench-gui/
+    ├── osworld-g/
+    ├── screenspot-pro/
+    ├── screenspot-v2/
+    └── uivision/
+```
+
+所有 benchmark 在推理时都需要这些图片。
+
 ## 项目结构
 
 ```
