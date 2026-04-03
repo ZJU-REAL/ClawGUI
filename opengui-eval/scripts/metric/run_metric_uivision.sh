@@ -3,8 +3,8 @@
 # ======================
 # Experiment Configuration
 # ======================
-EXP_NAME="maiui_8b_api_uivision_exp1"
-BENCHMARK="uivision-maiui"
+EXP_NAME="uivenus-exp"
+BENCHMARK="uivision-uivenus"
 
 # ======================
 # Path Configuration

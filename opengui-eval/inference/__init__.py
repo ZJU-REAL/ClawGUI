@@ -9,6 +9,9 @@ from .maiui_inferencer import MAIUIInferencer
 from .uitars_inferencer import UITARSInferencer
 from .guiowl15_inferencer import GUIOwl15Inferencer
 from .guig2_inferencer import GUIG2Inferencer
+from .uivenus_inferencer import UIVenusInferencer
+from .seed_inferencer import SeedInferencer
+from .gemini_inferencer import GeminiInferencer
 
 
 INFERENCER_REGISTRY = {
@@ -20,6 +23,9 @@ INFERENCER_REGISTRY = {
     "uitars"    : UITARSInferencer,
     "guiowl15"  : GUIOwl15Inferencer,
     "guig2"     : GUIG2Inferencer,
+    "uivenus"   : UIVenusInferencer,
+    "seed"      : SeedInferencer,
+    "gemini"    : GeminiInferencer,
 }
 
 
@@ -58,6 +64,9 @@ __all__ = [
     "UITARSInferencer",
     "GUIOwl15Inferencer",
     "GUIG2Inferencer",
+    "UIVenusInferencer",
+    "SeedInferencer",
+    "GeminiInferencer",
     "INFERENCER_REGISTRY",
     "get_inferencer",
 ]

@@ -16,9 +16,11 @@ import re
 import json
 import argparse
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from tqdm import tqdm
 from base_judge import BaseJudge
+from grounding_judge import guig2_parse as _grounding_guig2_parse
+from grounding_judge import seed18_parse as _grounding_seed18_parse
 
 REFUSAL = (-1, -1)  # sentinel for model refusal output
 
@@ -94,6 +96,13 @@ def qwen25vl_parse(infer_str: str, image_size: List[int]) -> Optional[Tuple[floa
     elif len(coords) >= 4:
         return (int((coords[0] + coords[2]) / 2), int((coords[1] + coords[3]) / 2))
     return None
+
+
+def guig2_parse(infer: Any, image_size: List[int]) -> Optional[Tuple[float, float]]:
+    """GUI-G2: normalized [0,1] box in JSONL; string path may carry OSWorld refusal signals."""
+    if isinstance(infer, str) and infer and _is_refusal_output(infer):
+        return REFUSAL
+    return _grounding_guig2_parse(infer, image_size)
 
 
 def stepgui_parse(infer_str: str, image_size: List[int]) -> Optional[Tuple[float, float]]:
@@ -191,6 +200,15 @@ def maiui_parse(infer_str: str, image_size: List[int]) -> Optional[Tuple[float, 
     return None
 
 
+def seed18_parse(infer_str: str, image_size: List[int]) -> Optional[Tuple[float, float]]:
+    """Seed 1.8: [0,1000] <point>x y</point>, with refusal check."""
+    if not infer_str:
+        return None
+    if _is_refusal_output(infer_str):
+        return REFUSAL
+    return _grounding_seed18_parse(infer_str, image_size)
+
+
 # ---------- geometry helpers ----------
 
 def is_point_in_rectangle(point: Tuple[float, float], rect: List[float]) -> bool:
@@ -243,10 +261,12 @@ class OSWorldGJudge(BaseJudge):
                     return maiui_parse(value, image_size)
                 elif model_type == 'guiowl15':
                     return qwen3vl_parse(value, image_size)
-                elif model_type == 'guig2':
-                    return qwen25vl_parse(value, image_size)
+                elif model_type in ('guig2', 'uivenus'):
+                    return guig2_parse(value, image_size)
+                elif model_type == 'seed':
+                    return seed18_parse(value, image_size)
                 else:
-                    supported = ['qwen3vl', 'guiowl15', 'qwen25vl', 'guig2', 'uitars', 'stepgui', 'uivenus15', 'maiui']
+                    supported = ['qwen3vl', 'guiowl15', 'qwen25vl', 'guig2', 'uivenus', 'uitars', 'stepgui', 'uivenus15', 'maiui', 'seed']
                     raise ValueError(f"Unsupported model_type: '{model_type}'. Supported: {supported}")
         return None
 

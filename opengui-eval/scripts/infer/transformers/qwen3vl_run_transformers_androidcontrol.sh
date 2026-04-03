@@ -1,14 +1,15 @@
 #!/bin/bash
+
 # ======================
 # Experiment Configuration
 # ======================
-EXPERIMENT_NAME="guig2-exp"
+EXPERIMENT_NAME="qwen3vl-2b-androidcontrol-high-exp"
 
 # ======================
 # Model Configuration
 # ======================
-MODEL_TYPE="guig2"
-MODEL_PATH="inclusionAI/GUI-G2-7B"
+MODEL_TYPE="qwen3vl"
+MODEL_PATH="Qwen/Qwen3-VL-2B-Instruct"  # 请修改为实际模型路径
 
 # ======================
 # Backend Configuration
@@ -20,28 +21,26 @@ BACKEND="transformers"
 # ======================
 MAX_TOKENS=512
 TEMPERATURE=0.0
-TOP_P=0.001
+TOP_P=1.0
 TOP_K=1
 
 # ======================
-# Image Configuration
+# Image Configuration  
 # ======================
-MIN_PIXELS=78400      # 100*28*28
-MAX_PIXELS=12845056   # 16384*28*28
+MIN_PIXELS=65536   # 可选：图片最小像素数，例如 224*224=50176
+MAX_PIXELS=16777216   # 可选：图片最大像素数，例如 224*224=50176
 
 # ======================
 # GPU Configuration
 # ======================
-NUM_GPUS=8  # number of GPUs for parallel inference
+NUM_GPUS=8  # 使用的GPU数量，>1时启动多GPU推理
 
 # ======================
 # Other Configuration
 # ======================
-TV_OR_VT="vt"  # input order: vt=image first, tv=text first
-# screenspot-pro-guig2 | screenspot-v2-guig2 | uivision-guig2 | mmbench-gui-guig2 | osworld-g-guig2
-BENCHMARK="screenspot-v2-guig2"
-SYSTEM_PROMPT=""  # "default"=model's default, "call_user"=read from jsonl, ""=disabled
-USE_CACHE=true  # enable KV cache during generation (true/false)
+TV_OR_VT="tv"
+BENCHMARK="androidcontrol-high-qwen3vl"
+SYSTEM_PROMPT="call_user"  # 空字符串=不使用system_prompt, default=使用默认prompt, call_user=从jsonl读取
 
 # ======================
 # Run Inference
@@ -60,7 +59,6 @@ python main.py \
     --tv_or_vt ${TV_OR_VT} \
     --benchmark ${BENCHMARK} \
     --num_gpus ${NUM_GPUS} \
-    --system_prompt "${SYSTEM_PROMPT}" \
-    --use_cache ${USE_CACHE} \
+    --system_prompt ${SYSTEM_PROMPT} \
     --resume \
     --verbose

@@ -44,3 +44,14 @@ venv/
 opengui-eval/MobileWorld/
 opengui-rl/data/geometry3k/
 .codebuddy/
+opengui-eval/image.zip
+opengui-eval/skill.md
+opengui-eval/filter_seed_predictions.py
+opengui-eval/environment.yml
+opengui-eval/env_skill.md
+opengui-eval/output
+opengui-eval/image
+opengui-eval/data
+opengui-eval/scripts/infer/transformers/run_all_transformers_benchmarks.sh
+opengui-eval/scripts/judge/run_all_judge_and_metric.sh
+opengui-eval/plot_reproduction.py

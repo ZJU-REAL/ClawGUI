@@ -2,19 +2,19 @@
 # ======================
 # Experiment Configuration
 # ======================
-EXP_NAME="uivenus-exp"
+EXP_NAME="seed18-zoom-exp"
 
 # ======================
 # Model Configuration
 # ======================
-# options: maiui qwen3vl qwen25vl uitars stepgui uivenus uivenus15 guiowl15 guig2
-MODEL_TYPE="uivenus"
+# options: maiui qwen3vl qwen25vl uitars stepgui uivenus uivenus15 guiowl15 guig2 seed
+MODEL_TYPE="seed"
 
 # ======================
 # Benchmark List
 # ======================
 BENCHMARKS=(
-    "uivision-${MODEL_TYPE}"
+    "screenspot-pro"
 )
 
 # ======================

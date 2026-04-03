@@ -3,8 +3,8 @@
 # ======================
 # Experiment Configuration
 # ======================
-EXP_NAME="seed18-zoom-exp"
-BENCHMARK="screenspot-pro"
+EXP_NAME="qwen3vl-2b-androidcontrol-high-exp"
+BENCHMARK="androidcontrol-high-qwen3vl"
 
 # ======================
 # Path Configuration
@@ -15,7 +15,7 @@ OUTPUT_FILE="output/${EXP_NAME}/${BENCHMARK}/metrics.json"
 # ======================
 # Run Metric Calculation
 # ======================
-python metric/screenspotpro_metric.py \
+python metric/androidcontrol_metric.py \
     --input_file ${INPUT_FILE} \
     --output_file ${OUTPUT_FILE} \
     --exp_name ${EXP_NAME} \

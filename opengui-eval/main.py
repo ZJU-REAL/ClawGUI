@@ -25,6 +25,7 @@ BENCHMARK_DATA_MAP = {
     "screenspot-v2-guiowl15"  : "data/screenspot-v2-guiowl15.json",
     "screenspot-v2-stepgui"   : "data/screenspot-v2-stepgui.json",
     "screenspot-v2-guig2"     : "data/screenspot-v2-guig2.json",
+    "screenspot-v2-uivenus"   : "data/screenspot-v2-guig2.json",
     # screenspot-pro
     "screenspot-pro"          : "data/screenspot-pro.json",
     "screenspot-pro-qwen3vl"  : "data/screenspot-pro-qwen3vl.json",
@@ -35,6 +36,7 @@ BENCHMARK_DATA_MAP = {
     "screenspot-pro-guiowl15" : "data/screenspot-pro-guiowl15.json",
     "screenspot-pro-stepgui"  : "data/screenspot-pro-stepgui.json",
     "screenspot-pro-guig2"    : "data/screenspot-pro-guig2.json",
+    "screenspot-pro-uivenus"  : "data/screenspot-pro-guig2.json",
     # uivision
     "uivision"                : "data/uivision.json",
     "uivision-qwen3vl"        : "data/uivision-qwen3vl.json",
@@ -45,6 +47,7 @@ BENCHMARK_DATA_MAP = {
     "uivision-guiowl15"       : "data/uivision-guiowl15.json",
     "uivision-stepgui"        : "data/uivision-stepgui.json",
     "uivision-guig2"          : "data/uivision-guig2.json",
+    "uivision-uivenus"        : "data/uivision-guig2.json",
     # osworld-g
     "osworld-g"               : "data/osworld-g.json",
     "osworld-g-qwen3vl"       : "data/osworld-g-qwen3vl.json",
@@ -55,6 +58,7 @@ BENCHMARK_DATA_MAP = {
     "osworld-g-guiowl15"      : "data/osworld-g-guiowl15.json",
     "osworld-g-stepgui"       : "data/osworld-g-stepgui.json",
     "osworld-g-guig2"         : "data/osworld-g-guig2.json",
+    "osworld-g-uivenus"       : "data/osworld-g-guig2.json",
     # mmbench-gui
     "mmbench-gui"             : "data/mmbench-gui.json",
     "mmbench-gui-qwen3vl"     : "data/mmbench-gui-qwen3vl.json",
@@ -65,6 +69,10 @@ BENCHMARK_DATA_MAP = {
     "mmbench-gui-guiowl15"    : "data/mmbench-gui-guiowl15.json",
     "mmbench-gui-stepgui"     : "data/mmbench-gui-stepgui.json",
     "mmbench-gui-guig2"       : "data/mmbench-gui-guig2.json",
+    "mmbench-gui-uivenus"     : "data/mmbench-gui-guig2.json",
+    # androidcontrol
+    "androidcontrol-high-qwen3vl"  : "data/androidcontrol_high_qwen3vl.json",
+    "androidcontrol-low-qwen3vl"  : "data/androidcontrol_low_qwen3vl.json",
 }
 
 def load_data(data_path: str) -> List[Dict[str, Any]]:
@@ -351,6 +359,7 @@ def worker_process(
         max_pixels=args_dict.get('max_pixels'),
         system_prompt_mode=args_dict.get('system_prompt_mode', ''),
         use_cache=args_dict.get('use_cache', True),
+        zoom=args_dict.get('zoom', False),
     )
 
     print(f"Worker-{gpu_id}: model ready, processing {len(samples_chunk)} samples")
@@ -625,6 +634,12 @@ def main():
         default=True,
         help="enable KV cache during generation, transformers backend only (default: True)"
     )
+    parser.add_argument(
+        "--zoom",
+        action="store_true",
+        default=False,
+        help="enable Zoom-In two-stage grounding (default: False)"
+    )
     
     args = parser.parse_args()
     
@@ -679,9 +694,12 @@ def main():
             max_pixels=args.max_pixels,
             system_prompt_mode=args.system_prompt,
             use_cache=args.use_cache,
+            zoom=args.zoom,
         )
         
         print(f"  inferencer ready")
+        if args.zoom:
+            print(f"  zoom: enabled")
     
     total_samples_all = 0
     total_inference_time_all = 0.0
@@ -722,6 +740,7 @@ def main():
                 'max_pixels': args.max_pixels,
                 'system_prompt_mode': args.system_prompt,
                 'use_cache': args.use_cache,
+                'zoom': args.zoom,
             }
             
             results, total_inference_time = run_inference_multigpu(

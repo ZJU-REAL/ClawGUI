@@ -6,7 +6,7 @@ import re
 import json
 import argparse
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from base_judge import BaseJudge
 
 
@@ -111,6 +111,51 @@ def qwen25vl_parse(infer_str: str, image_size: List[int]) -> Optional[Tuple[floa
         x_center = (coords[0] + coords[2]) / 2
         y_center = (coords[1] + coords[3]) / 2
         return (x_center, y_center)
+
+    return None
+
+
+def guig2_parse(infer: Union[str, List, Tuple], image_size: List[int]) -> Optional[Tuple[float, float]]:
+    """
+    Parse GUI-G2 (transformers) prediction into absolute pixel coordinates.
+
+    Inference stores normalized box [x1, y1, x2, y2] in [0, 1] relative to the
+    original image (same convention as GUIG2Inferencer). Point-in-box evaluation
+    uses the center of the predicted box, consistent with the 4-number path in
+    qwen25vl_parse.
+    """
+    if infer is None:
+        return None
+    width, height = float(image_size[0]), float(image_size[1])
+
+    coords: Optional[List[float]] = None
+    if isinstance(infer, (list, tuple)):
+        try:
+            coords = [float(x) for x in infer]
+        except (TypeError, ValueError):
+            return None
+    elif isinstance(infer, str):
+        s = infer.strip()
+        if not s:
+            return None
+        try:
+            parsed = json.loads(s)
+            if isinstance(parsed, (list, tuple)):
+                coords = [float(x) for x in parsed]
+        except (json.JSONDecodeError, TypeError, ValueError):
+            numbers = re.findall(r'-?\d+\.?\d*(?:[eE][+-]?\d+)?', s)
+            if numbers:
+                coords = [float(n) for n in numbers]
+
+    if not coords:
+        return None
+
+    if len(coords) >= 4:
+        x_c = (coords[0] + coords[2]) / 2.0 * width
+        y_c = (coords[1] + coords[3]) / 2.0 * height
+        return (x_c, y_c)
+    if len(coords) >= 2:
+        return (coords[0] * width, coords[1] * height)
 
     return None
 
@@ -230,6 +275,34 @@ def uivenus15_parse(infer_str: str, image_size: List[int]) -> Optional[Tuple[flo
     return None
 
 
+def seed18_parse(infer_str: str, image_size: List[int]) -> Optional[Tuple[float, float]]:
+    """
+    Parse Seed 1.8 output into absolute pixel coordinates.
+
+    Output format: <point>x y</point>
+    Coordinates are [0, 1000]-normalized. Uses findall and takes the last match
+    (the final answer is typically at the end of the reasoning chain).
+    """
+    if not infer_str:
+        return None
+
+    pattern = r'<point>\s*(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s*</point>'
+    matches = re.findall(pattern, infer_str)
+
+    if not matches:
+        return None
+
+    # Take the last match (final answer after reasoning)
+    x, y = matches[-1]
+    coords = [float(x), float(y)]
+
+    width, height = image_size
+    abs_x = coords[0] / 1000.0 * width
+    abs_y = coords[1] / 1000.0 * height
+    
+    return (abs_x, abs_y)
+
+
 def maiui_parse(infer_str: str, image_size: List[int]) -> Optional[Tuple[float, float]]:
     """
     Parse MAI-UI output into absolute pixel coordinates.
@@ -298,7 +371,9 @@ class ScreenSpotJudge(BaseJudge):
                 model_type = key.replace('_infer', '')
                 if model_type in ('qwen3vl', 'guiowl15'):
                     return qwen3vl_parse(value, image_size)
-                elif model_type in ('qwen25vl', 'guig2'):
+                elif model_type in ('guig2', 'uivenus'):
+                    return guig2_parse(value, image_size)
+                elif model_type == 'qwen25vl':
                     return qwen25vl_parse(value, image_size)
                 elif model_type == 'uitars':
                     return uitars_parse(value, image_size)
@@ -308,8 +383,10 @@ class ScreenSpotJudge(BaseJudge):
                     return uivenus15_parse(value, image_size)
                 elif model_type == 'maiui':
                     return maiui_parse(value, image_size)
+                elif model_type == 'seed':
+                    return seed18_parse(value, image_size)
                 else:
-                    supported = ['qwen3vl', 'guiowl15', 'qwen25vl', 'guig2', 'uitars', 'stepgui', 'uivenus15', 'maiui']
+                    supported = ['qwen3vl', 'guiowl15', 'qwen25vl', 'guig2', 'uivenus', 'uitars', 'stepgui', 'uivenus15', 'maiui', 'seed']
                     raise ValueError(f"Unsupported model_type: '{model_type}'. Supported: {supported}")
         return None
 

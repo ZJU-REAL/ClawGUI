@@ -2,13 +2,13 @@
 # ======================
 # Experiment Configuration
 # ======================
-EXP_NAME="maiui_2b_exp1"
+EXP_NAME="uivenus-exp"
 
 # ======================
 # Model Configuration
 # ======================
-# options: maiui qwen3vl qwen25vl uitars stepgui uivenus15 guiowl15 guig2
-MODEL_TYPE="maiui"
+# options: maiui qwen3vl qwen25vl uitars stepgui uivenus uivenus15 guiowl15 guig2
+MODEL_TYPE="uivenus"
 
 # ======================
 # Benchmark List
@@ -30,7 +30,7 @@ for BENCHMARK in "${BENCHMARKS[@]}"; do
     echo "Output:  ${OUTPUT_FILE}"
     echo "=========================================="
 
-    python ./judge/grounding_judge.py \
+    python judge/grounding_judge.py \
         --input_file ${INPUT_FILE} \
         --output_file ${OUTPUT_FILE} \
         --exp_name ${EXP_NAME} \

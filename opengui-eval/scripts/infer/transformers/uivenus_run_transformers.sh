@@ -2,13 +2,13 @@
 # ======================
 # Experiment Configuration
 # ======================
-EXPERIMENT_NAME="guig2-exp"
+EXPERIMENT_NAME="uivenus-exp"
 
 # ======================
 # Model Configuration
 # ======================
-MODEL_TYPE="guig2"
-MODEL_PATH="inclusionAI/GUI-G2-7B"
+MODEL_TYPE="uivenus"
+MODEL_PATH="inclusionAI/UI-Venus-Ground-7B"
 
 # ======================
 # Backend Configuration
@@ -26,8 +26,8 @@ TOP_K=1
 # ======================
 # Image Configuration
 # ======================
-MIN_PIXELS=78400      # 100*28*28
-MAX_PIXELS=12845056   # 16384*28*28
+MIN_PIXELS=2000000     
+MAX_PIXELS=4800000  
 
 # ======================
 # GPU Configuration
@@ -38,8 +38,8 @@ NUM_GPUS=8  # number of GPUs for parallel inference
 # Other Configuration
 # ======================
 TV_OR_VT="vt"  # input order: vt=image first, tv=text first
-# screenspot-pro-guig2 | screenspot-v2-guig2 | uivision-guig2 | mmbench-gui-guig2 | osworld-g-guig2
-BENCHMARK="screenspot-v2-guig2"
+# screenspot-pro-uivenus | screenspot-v2-uivenus | uivision-uivenus | mmbench-gui-uivenus | osworld-g-uivenus
+BENCHMARK="osworld-g-uivenus"
 SYSTEM_PROMPT=""  # "default"=model's default, "call_user"=read from jsonl, ""=disabled
 USE_CACHE=true  # enable KV cache during generation (true/false)
 

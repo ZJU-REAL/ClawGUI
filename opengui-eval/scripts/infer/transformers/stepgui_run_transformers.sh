@@ -2,7 +2,7 @@
 # ======================
 # Experiment Configuration
 # ======================
-EXPERIMENT_NAME="stepgui-exp0"
+EXPERIMENT_NAME="stepgui-exp"
 
 # ======================
 # Model Configuration
@@ -40,7 +40,7 @@ NUM_GPUS=8  # number of GPUs for parallel inference
 TV_OR_VT="vt"  # input order: vt=image first, tv=text first
 # screenspot-pro-stepgui | screenspot-v2-stepgui | uivision-stepgui | mmbench-gui-stepgui | osworld-g-stepgui
 BENCHMARK="osworld-g-stepgui"
-SYSTEM_PROMPT=""  # "default"=model's default, "call_user"=read from jsonl, ""=disabled
+SYSTEM_PROMPT="default"  # "default"=model's default, "call_user"=read from jsonl, ""=disabled
 USE_CACHE=true  # enable KV cache during generation (true/false)
 
 # ======================
