@@ -41,7 +41,7 @@
 ✨ **Key Features:**
 - 🔌 **Dual backend support** — Local GPU via `transformers` or remote API via OpenAI-compatible endpoints
 - 📊 **6 benchmarks** — ScreenSpot-Pro, ScreenSpot-V2, UIVision, MMBench-GUI, OSWorld-G, AndroidControl
-- 🤖 **9+ models** — Qwen3-VL, Qwen2.5-VL, UI-TARS, MAI-UI, GUI-G2, UI-Venus, and more
+- 🤖 **11+ models** — Qwen3-VL, Qwen2.5-VL, UI-TARS, MAI-UI, GUI-G2, UI-Venus, Gemini, Seed 1.8, and more
 - ⚡ **Multi-GPU & multi-thread** — Parallel inference with automatic resume
 - 🧩 **Easily extensible** — Add new models by inheriting a simple base class
 - ✅ **Faithful reproduction** — Comprehensive reproduction results with detailed official vs. reproduced comparisons ([see details](#-reproduction-results))
@@ -147,7 +147,9 @@ opengui-eval/
 │   ├── guig2_inferencer.py              # GUI-G2
 │   ├── uitars_inferencer.py             # UI-TARS (extends Qwen2.5-VL)
 │   ├── uivenus15_inferencer.py          # UI-Venus 1.5 (extends Qwen3-VL)
-│   └── uivenus_inferencer.py            # UI-Venus (extends GUI-G2)
+│   ├── uivenus_inferencer.py            # UI-Venus (extends GUI-G2)
+│   ├── gemini_inferencer.py             # Gemini (API, optional Zoom)
+│   └── seed_inferencer.py               # Seed 1.8 (API, optional Zoom)
 ├── 📂 judge/                            # Judgment module
 │   ├── base_judge.py                    # Abstract base class
 │   ├── grounding_judge.py               # Point-in-box judge (most benchmarks)
@@ -185,10 +187,6 @@ opengui-eval/
 |:---------:|:--------------:|:-------------:|:--------:|:-----------:|:---------:|:--------------:|
 | Status    | ✅              | ✅             | ✅        | ✅           | ✅         | ✅              |
 
-### Models
-
-| Model Key | Model Name | Architecture | Coordinate System | Input Order | System Prompt | ScreenSpot-Pro | ScreenSpot-V2 | UIVision | MMBench-GUI | OSWorld-G | AndroidControl |
-|-----------|-----------|-------------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 ### Open-Source Models
 
 | Model Key | Model Name | Architecture | Coordinate System | Input Order | System Prompt | ScreenSpot-Pro | ScreenSpot-V2 | UIVision | MMBench-GUI | OSWorld-G | AndroidControl |
@@ -202,6 +200,8 @@ opengui-eval/
 | `guig2` | GUI-G2 | Extends Qwen2.5-VL | `[0, 1000]` | `vt` | ❌ None | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `uivenus15` | UI-Venus 1.5 | Extends Qwen3-VL | `[0, 1000]` | `vt` | ❌ None | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `uivenus` | UI-Venus | Extends GUI-G2 | `[0, 1000]` | `vt` | ❌ None | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `gemini` | Gemini 3.x Pro | API (optional Zoom) | `[0, 1000]` | `vt` | ✅ Built-in | ✅ | - | - | - | - | - |
+| `seed` | Seed 1.8 | API (optional Zoom) | `[0, 1000]` | `vt` | ✅ Built-in | ✅ | - | - | - | - | - |
 
 ### Frontier / Closed-Source Models
 
@@ -209,7 +209,7 @@ We have also reproduced GUI grounding results for frontier models on ScreenSpot-
 
 | Model | Coordinate System | Zoom Paradigm | SS-Pro Official | SS-Pro Ours |
 |-------|:-:|:-:|:-:|:-:|
-| Gemini 3.1 Pro | `[0, 1000]` | ✅ | - | 85.01 |
+| Gemini 3.1 Pro | `[0, 1000]` | ✅ | N/A | 85.01 |
 | Gemini 3.0 Pro | `[0, 1000]` | ✅ | 72.70 | **75.08** ✅ |
 | Seed 1.8 | `[0, 1000]` | ✅ | 73.10 | **72.80** ✅ |
 
@@ -448,12 +448,11 @@ A key goal of OpenGUI-Eval is **faithful reproduction** of officially reported n
 | MAI-UI-2B | 57.40 | **57.94** ✅ | 92.50 | **92.30** ✅ | 30.30 | **29.68** ✅ | 82.60 | **82.80** ✅ | 52.00 | **59.80** ✅ |
 | MAI-UI-8B | 65.80 | 64.07 ❌ | 95.20 | **94.34** ✅ | 40.70 | **40.23** ✅ | 88.80 | **88.81** ✅ | 60.10 | **69.80** ✅ |
 | StepGUI-4B | 60.00 | **59.14** ✅ | 93.60 | 91.98 ❌ | - | 29.90 | 84.00 | **83.03** ✅ | 66.90 | 65.69 ❌ |
+| Gemini 3.0 Pro (Zoom, API) | 72.70 | **75.08** ✅ | - | - | - | - | - | - | - | - |
+| Gemini 3.1 Pro (Zoom, API) | - | **85.01** | - | - | - | - | - | - | - | - |
+| Seed 1.8 (Zoom, API) | 73.10 | **72.80** ✅ | - | - | - | - | - | - | - | - |
 
-**Reproduction Rate (Open-Source, GUI Grounding):** 39 / 44 cells with official baselines = **88.6%**
-
-**Reproduction Rate (Frontier Models, ScreenSpot-Pro):** 2 / 2 cells with official baselines = **100.0%**
-
-**Overall Reproduction Rate:** 41 / 46 = **89.1%**
+**Reproduction Rate (GUI Grounding, cells with official baselines):** Counting open-source rows plus Gemini 3.0 Pro & Seed 1.8 (ScreenSpot-Pro Zoom, API) where official numbers exist — **41 / 46 = 89.1%**
 
 > **Note on ScreenSpot-Pro & OSWorld-G gaps:** Some models show larger deviations on ScreenSpot-Pro (e.g., Qwen3-VL-2B, UI-TARS) and OSWorld-G. This is often due to differences in image preprocessing pipelines or evaluation configurations that are not fully documented in official releases. We are actively investigating and improving these reproductions.
 

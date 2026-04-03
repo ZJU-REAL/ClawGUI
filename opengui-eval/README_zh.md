@@ -41,7 +41,7 @@
 ✨ **核心特性：**
 - 🔌 **双后端支持** — 本地 GPU 推理（`transformers`）或远程 API 调用（OpenAI 兼容接口）
 - 📊 **6 大 Benchmark** — ScreenSpot-Pro、ScreenSpot-V2、UIVision、MMBench-GUI、OSWorld-G、AndroidControl
-- 🤖 **9+ 模型** — Qwen3-VL、Qwen2.5-VL、UI-TARS、MAI-UI、GUI-G2、UI-Venus 等
+- 🤖 **11+ 模型** — Qwen3-VL、Qwen2.5-VL、UI-TARS、MAI-UI、GUI-G2、UI-Venus、Gemini、Seed 1.8 等
 - ⚡ **多 GPU & 多线程** — 并行推理，支持断点续推
 - 🧩 **易于扩展** — 继承基类即可添加新模型
 - ✅ **忠实复现** — 提供详细的官方 vs. 复现结果对比（[查看详情](#-复现结果)）
@@ -147,7 +147,9 @@ opengui-eval/
 │   ├── guig2_inferencer.py              # GUI-G2
 │   ├── uitars_inferencer.py             # UI-TARS（继承 Qwen2.5-VL）
 │   ├── uivenus15_inferencer.py          # UI-Venus 1.5（继承 Qwen3-VL）
-│   └── uivenus_inferencer.py            # UI-Venus（继承 GUI-G2）
+│   ├── uivenus_inferencer.py            # UI-Venus（继承 GUI-G2）
+│   ├── gemini_inferencer.py             # Gemini（API，可选 Zoom）
+│   └── seed_inferencer.py               # Seed 1.8（API，可选 Zoom）
 ├── 📂 judge/                            # 评判模块
 │   ├── base_judge.py                    # 抽象基类
 │   ├── grounding_judge.py               # 点击坐标评判器（大部分 benchmark）
@@ -185,10 +187,6 @@ opengui-eval/
 |:---------:|:--------------:|:-------------:|:--------:|:-----------:|:---------:|:--------------:|
 | 状态       | ✅              | ✅             | ✅        | ✅           | ✅         | ✅              |
 
-### 模型
-
-| 模型 Key | 模型名称 | 架构 | 坐标系统 | 输入顺序 | System Prompt | ScreenSpot-Pro | ScreenSpot-V2 | UIVision | MMBench-GUI | OSWorld-G | AndroidControl |
-|---------|---------|-----|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 ### 开源模型
 
 | 模型 Key | 模型名称 | 架构 | 坐标系统 | 输入顺序 | System Prompt | ScreenSpot-Pro | ScreenSpot-V2 | UIVision | MMBench-GUI | OSWorld-G | AndroidControl |
@@ -202,6 +200,8 @@ opengui-eval/
 | `guig2` | GUI-G2 | 继承 Qwen2.5-VL | `[0, 1000]` | `vt` | ❌ 无 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `uivenus15` | UI-Venus 1.5 | 继承 Qwen3-VL | `[0, 1000]` | `vt` | ❌ 无 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `uivenus` | UI-Venus | 继承 GUI-G2 | `[0, 1000]` | `vt` | ❌ 无 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `gemini` | Gemini 3.x Pro | API（可选 Zoom） | `[0, 1000]` | `vt` | ✅ 内置 | ✅ | - | - | - | - | - |
+| `seed` | Seed 1.8 | API（可选 Zoom） | `[0, 1000]` | `vt` | ✅ 内置 | ✅ | - | - | - | - | - |
 
 ### 前沿 / 闭源模型
 
@@ -209,7 +209,7 @@ opengui-eval/
 
 | 模型 | 坐标系统 | Zoom 范式 | SS-Pro 官方 | SS-Pro 复现 |
 |------|:-:|:-:|:-:|:-:|
-| Gemini 3.1 Pro | `[0, 1000]` | ✅ | - | 85.01 |
+| Gemini 3.1 Pro | `[0, 1000]` | ✅ | 无（N/A） | 85.01 |
 | Gemini 3.0 Pro | `[0, 1000]` | ✅ | 72.70 | **75.08** ✅ |
 | Seed 1.8 | `[0, 1000]` | ✅ | 73.10 | **72.80** ✅ |
 
@@ -448,12 +448,11 @@ OpenGUI-Eval 的核心目标之一是**忠实复现**官方公布的数值。下
 | MAI-UI-2B | 57.40 | **57.94** ✅ | 92.50 | **92.30** ✅ | 30.30 | **29.68** ✅ | 82.60 | **82.80** ✅ | 52.00 | **59.80** ✅ |
 | MAI-UI-8B | 65.80 | 64.07 ❌ | 95.20 | **94.34** ✅ | 40.70 | **40.23** ✅ | 88.80 | **88.81** ✅ | 60.10 | **69.80** ✅ |
 | StepGUI-4B | 60.00 | **59.14** ✅ | 93.60 | 91.98 ❌ | - | 29.90 | 84.00 | **83.03** ✅ | 66.90 | 65.69 ❌ |
+| Gemini 3.0 Pro（Zoom，API） | 72.70 | **75.08** ✅ | - | - | - | - | - | - | - | - |
+| Gemini 3.1 Pro（Zoom，API） | - | **85.01** | - | - | - | - | - | - | - | - |
+| Seed 1.8（Zoom，API） | 73.10 | **72.80** ✅ | - | - | - | - | - | - | - | - |
 
-**开源模型 GUI Grounding 复现率：** 39 / 44 个有官方基准的格子 = **88.6%**
-
-**前沿模型 ScreenSpot-Pro 复现率：** 2 / 2 个有官方基准的格子 = **100.0%**
-
-**总体复现率：** 41 / 46 = **89.1%**
+**GUI Grounding 复现率（含官方基准的格子）：** 统计开源模型行，以及 Gemini 3.0 Pro、Seed 1.8 在 ScreenSpot-Pro（Zoom、API）上与官方可比的指标 — **41 / 46 = 89.1%**
 
 > **关于 ScreenSpot-Pro 和 OSWorld-G 的偏差说明：** 部分模型（如 Qwen3-VL-2B、UI-TARS）在 ScreenSpot-Pro 和 OSWorld-G 上偏差较大，通常是由于官方未完整披露的图像预处理流程或评测配置差异所致。我们正在积极排查并改进。
 
