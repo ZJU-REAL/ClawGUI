@@ -183,13 +183,13 @@ opengui-eval/
 |-----------|-----------|-------------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | `qwen3vl` | Qwen3-VL | Standalone | `[0, 1000]` | `vt` | ✅ Required | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `qwen25vl` | Qwen2.5-VL | Standalone | Absolute | `vt` | ✅ Required | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `maiui` | MAI-UI | Standalone | `[0, 1000]` | `tv` | ✅ Required | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `stepgui` | StepGUI (GELab-Zero) | Standalone | `[0, 999]` | `vt` | ❌ None | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `guiowl15` | GUI-Owl 1.5 | Standalone | `[0, 1000]` | `vt` | ✅ Required | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `uitars` | UI-TARS 1.5 | Extends Qwen2.5-VL | Absolute (smart_resize) | `vt` | ❌ None | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `guig2` | GUI-G2 | Extends Qwen2.5-VL | `[0, 1000]` | `vt` | ❌ None | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `uivenus15` | UI-Venus 1.5 | Extends Qwen3-VL | `[0, 1000]` | `vt` | ❌ None | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `uivenus` | UI-Venus | Extends GUI-G2 | `[0, 1000]` | `vt` | ❌ None | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `maiui` | MAI-UI | Standalone | `[0, 1000]` | `tv` | ✅ Required | ✅ | ✅ | ✅ | ✅ | ✅ | - |
+| `stepgui` | StepGUI (GELab-Zero) | Standalone | `[0, 999]` | `vt` | ❌ None | ✅ | ✅ | ✅ | ✅ | ✅ | - |
+| `guiowl15` | GUI-Owl 1.5 | Standalone | `[0, 1000]` | `vt` | ✅ Required | ✅ | ✅ | ✅ | ✅ | ✅ | - |
+| `uitars` | UI-TARS 1.5 | Extends Qwen2.5-VL | Absolute (smart_resize) | `vt` | ❌ None | ✅ | ✅ | ✅ | ✅ | ✅ | - |
+| `guig2` | GUI-G2 | Extends Qwen2.5-VL | `[0, 1000]` | `vt` | ❌ None | ✅ | ✅ | ✅ | ✅ | ✅ | - |
+| `uivenus15` | UI-Venus 1.5 | Extends Qwen3-VL | `[0, 1000]` | `vt` | ❌ None | ✅ | ✅ | ✅ | ✅ | ✅ | - |
+| `uivenus` | UI-Venus | Extends GUI-G2 | `[0, 1000]` | `vt` | ❌ None | ✅ | ✅ | ✅ | ✅ | ✅ | - |
 | `gemini` | Gemini 3.x Pro | API (optional Zoom) | `[0, 1000]` | `tv` | ✅ Built-in | ✅ | - | - | - | - | - |
 | `seed` | Seed 1.8 | API (optional Zoom) | `[0, 1000]` | `tv` | ✅ Built-in | ✅ | - | - | - | - | - |
 
