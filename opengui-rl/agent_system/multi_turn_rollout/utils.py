@@ -223,7 +223,7 @@ def save_episode_to_json(
     task_name: str,
     task_goal: str,
     episode_id: str,
-    save_dir: str = "/home/tangfei/online_rl/verl-agent/episode",
+    save_dir: str = "./opengui-rl/episode",
     step_number: int = 0,
     step_reward: float = None,
     step_reward_reason: str = None,
