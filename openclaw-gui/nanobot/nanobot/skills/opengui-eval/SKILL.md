@@ -316,7 +316,7 @@ If the user ran multiple benchmarks, present a **summary comparison table** at t
 
 Use this table to look up official baselines for comparison. `-` means no official number is available.
 
-| Model | SS-Pro | SS-V2 | UIVision | MMB-GUI | OSWorld-G |
+| Model | ScreenSpot-Pro | ScreenSpot-V2 | UIVision | MMB-GUI | OSWorld-G |
 |:------|:-:|:-:|:-:|:-:|:-:|
 | GUI-G2-7B | 47.50 | 93.30 | - | - | - |
 | GUI-Owl 1.5-2B | 57.80 | 89.70 | - | 72.17 | 52.80 |
