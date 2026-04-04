@@ -62,5 +62,21 @@ opengui-eval/scripts/infer/transformers/run_all_transformers_benchmarks.sh
 opengui-eval/scripts/judge/run_all_judge_and_metric.sh
 opengui-eval/plot_reproduction.py
 
+opengui-eval/scripts/generate_scripts/
+
 opengui-rl/assets/gen_reward_curve.py
 OpenGUI-Server
+
+# Nanobot workspace runtime files
+AGENTS.md
+SOUL.md
+USER.md
+TOOLS.md
+HEARTBEAT.md
+memory/
+cron/
+sessions/
+
+# Phone agent runtime data
+openclaw-gui/memory_db/
+openclaw-gui/demo_memory_db/

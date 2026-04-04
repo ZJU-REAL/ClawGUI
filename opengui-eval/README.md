@@ -68,9 +68,10 @@ cd OpenGUI/opengui-eval
 ```
 
 ```bash
-conda create -n opengui-eval python=3.12 -y
-conda activate opengui-eval
+conda create -n opengui python=3.12 -y
+conda activate opengui
 pip install -r requirements.txt
+# Recommended: FlashAttention-2 for better precision (falls back to SDPA if not installed)
 pip install flash-attn==2.8.1 --no-build-isolation
 # Optional: vLLM support
 pip install vllm==0.11.0

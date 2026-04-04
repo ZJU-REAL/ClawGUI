@@ -68,9 +68,10 @@ cd OpenGUI/opengui-eval
 ```
 
 ```bash
-conda create -n opengui-eval python=3.12 -y
-conda activate opengui-eval
+conda create -n opengui python=3.12 -y
+conda activate opengui
 pip install -r requirements.txt
+# 建议安装flash-attn提升推理性能
 pip install flash-attn==2.8.1 --no-build-isolation
 # 可选：vLLM 支持
 pip install vllm==0.11.0
