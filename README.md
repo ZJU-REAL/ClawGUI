@@ -1,10 +1,8 @@
 <div align="center">
 
-<img src="assets/slogan.png" width="80%" alt="OpenGUI Slogan">
-
 <h1>
   <img src="assets/OpenGUI-Logo.png" height="45" alt="OpenGUI Logo" style="vertical-align:middle; margin-right:10px;">
-  OpenGUI
+  OpenGUI: A Unified GUI Agent Harness
 </h1>
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
@@ -23,12 +21,10 @@
 
 - [Overview](#-overview)
 - [Architecture](#️-architecture)
-- [Sub-projects](#-sub-projects)
+- [Quick Start](#-quick-start)
   - [OpenClaw-GUI — Agent Inference](#-openclaw-gui--agent-inference)
   - [OpenGUI-Eval — Evaluation](#-opengui-eval--evaluation)
   - [OpenGUI-RL — Online RL Training](#-opengui-rl--online-rl-training)
-- [Quick Start](#-quick-start)
-- [Experimental Results](#-experimental-results)
 - [Acknowledgements](#-acknowledgements)
 
 ---
@@ -37,12 +33,12 @@
 
 **OpenGUI** is a full-stack, end-to-end agent harness system for GUI intelligence. It covers the complete lifecycle of a GUI agent — from **inference and deployment**, through **standardized evaluation**, to **online reinforcement learning training** — providing researchers and engineers with a unified, production-ready infrastructure.
 
-✨ **What OpenGUI offers:**
-
-- 🤖 **[OpenClaw-GUI]** A GUI agent inference framework that lets users control mobile devices via natural language through popular chat platforms (Feishu, DingTalk, Telegram, etc.), powered by VLMs and a personalized memory system.
-- 📊 **[OpenGUI-Eval]** A standardized GUI grounding evaluation suite covering 6 benchmarks and 11+ models, with a faithful 95%+ reproduction rate of official results.
-- 🚀 **[OpenGUI-RL]** A scalable online RL training infrastructure supporting parallel multi-environment training, real-device training, GiGPO with PRM, and robust spare-server rotation.
-- 🏆 **[OpenGUI-2B]** A state-of-the-art 2B GUI agent trained with OpenGUI-RL using GiGPO, achieving **17.1** MobileWorld SR — surpassing much larger models.
+| Module | Description |
+|--------|-------------|
+| 🤖 **[OpenClaw-GUI](openclaw-gui/)** | GUI agent inference framework — control mobile devices via natural language through Feishu, DingTalk, Telegram and 12+ chat platforms, powered by VLMs and a personalized memory system |
+| 📊 **[OpenGUI-Eval](opengui-eval/)** | Standardized GUI grounding evaluation suite — 6 benchmarks, 11+ models, 95%+ faithful reproduction of official results |
+| 🚀 **[OpenGUI-RL](opengui-rl/)** | Scalable online RL training infrastructure — parallel multi-environment training, real-device support, GiGPO with PRM, robust spare-server rotation |
+| 🏆 **OpenGUI-2B** | State-of-the-art 2B GUI agent trained with GiGPO, achieving **17.1** MobileWorld SR |
 
 ---
 
@@ -54,98 +50,51 @@
 
 ---
 
-## 📦 Sub-projects
-
-### 🤖 OpenClaw-GUI — Agent Inference
-
-> **Path:** [`openclaw-gui/`](openclaw-gui/)
-
-OpenClaw-GUI is a GUI agent inference framework built on [OpenClaw](https://github.com/openclaw/openclaw). It integrates [nanobot](https://github.com/HKUDS/nanobot) to enable users to control mobile devices with natural language instructions via 12+ chat platforms.
-
-**Key features:**
-- 💬 **Multi-platform chat control** — Feishu, DingTalk, Telegram, Discord, Slack, QQ, and more
-- 📱 **Cross-platform device support** — Android (ADB), HarmonyOS (HDC), iOS (XCTest)
-- 🧠 **Personalized memory system** — Learns user preferences and injects relevant context automatically
-- 🤖 **Multi-model support** — AutoGLM, MAI-UI, GUI-Owl, Qwen-VL, UI-TARS via OpenAI-compatible API
-- 📝 **Episode recording** — Every task execution is saved as structured episodes for replay and dataset building
-- 🖥️ **Web UI** — Gradio-based interface for device management, task execution, and memory inspection
-
----
-
-### 📊 OpenGUI-Eval — Evaluation
-
-> **Path:** [`opengui-eval/`](opengui-eval/) | [🤗 Dataset](https://huggingface.co/datasets/johnzqlu/opengui-eval) | [🤖 ModelScope](https://modelscope.cn/datasets/Matrix0602/opengui-eval)
-
-OpenGUI-Eval is a standardized evaluation framework for GUI grounding models, adopting a three-stage **Infer → Judge → Metric** pipeline.
-
-**Key features:**
-- 📊 **6 benchmarks** — ScreenSpot-Pro, ScreenSpot-V2, UIVision, MMBench-GUI, OSWorld-G, AndroidControl
-- 🤖 **11+ models** — Qwen3-VL, Qwen2.5-VL, UI-TARS, MAI-UI, GUI-G2, UI-Venus, Gemini, Seed 1.8, and more
-- 🔌 **Dual backend** — Local GPU via `transformers` or remote API via OpenAI-compatible endpoints
-- ⚡ **Multi-GPU & multi-thread** — Parallel inference with automatic resume
-- ✅ **95.8% reproduction rate** — Faithful reproduction of officially reported numbers across all supported models
-
----
-
-### 🚀 OpenGUI-RL — Online RL Training
-
-> **Path:** [`opengui-rl/`](opengui-rl/)
-
-OpenGUI-RL is a scalable online RL infrastructure for training GUI agents, supporting both virtual environment scaling and real-device training.
-
-**Key features:**
-- 🌐 **Parallel multi-environment training** — Dozens of virtual environments in parallel
-- 📱 **Real-device training** — Physical or cloud Android phones
-- 🤖 **Multi-model support** — MAI-UI, GUI-Owl, and extensible to Qwen3-VL family
-- 🏆 **GiGPO + PRM** — Fine-grained step-level reward for better policy optimization
-- ♻️ **Spare server rotation** — Automatic failover for robust long-running training
-- 🔄 **Environment restart & retry** — Built-in stability mechanisms for production-grade runs
-- 🎬 **Episode visualization** — Record and replay any training trajectory
-
----
-
 ## 🚀 Quick Start
 
-### Step 1 — Clone the repository
+First, clone the repository:
 
 ```bash
 git clone https://github.com/sugarandgugu/OpenGUI.git
 cd OpenGUI
 ```
 
-### Step 2 — Choose your module
-
-OpenGUI is composed of three independent sub-projects. Install and use them based on your need:
+OpenGUI consists of three independent modules. Follow the guide for whichever you need.
 
 ---
 
-#### 🤖 OpenClaw-GUI (Agent Inference)
+### 🤖 OpenClaw-GUI — Agent Inference
+
+> [`openclaw-gui/`](openclaw-gui/)
+
+OpenClaw-GUI lets you control Android / HarmonyOS / iOS devices with natural language by sending messages through popular chat platforms (Feishu, DingTalk, Telegram, Discord, Slack, QQ, and more). It is built on [OpenClaw](https://github.com/openclaw/openclaw) and [nanobot](https://github.com/HKUDS/nanobot), supporting AutoGLM, MAI-UI, GUI-Owl, Qwen-VL, and UI-TARS via OpenAI-compatible APIs. A built-in personalized memory system automatically learns your preferences and improves over time. Every task execution is recorded as a structured episode for replay and dataset building. A Gradio Web UI is also provided for interactive use.
 
 ```bash
 cd openclaw-gui
 
-# Create and activate virtual environment
 uv venv .venv && source .venv/bin/activate
-
-# Install phone_agent and nanobot
 uv pip install -e .
 uv pip install -e nanobot/
 
 # Initialize configuration
 nanobot onboard
 
-# Start the agent gateway (chat platform control)
+# Start via chat platform gateway
 nanobot gateway
 
 # Or launch the Web UI
 python webui.py
 ```
 
-> For device connection (ADB / HDC / iOS) and chat platform configuration, refer to [`openclaw-gui/README.md`](openclaw-gui/README.md).
+> For device connection (ADB / HDC / iOS) and chat platform setup, see [`openclaw-gui/README.md`](openclaw-gui/README.md).
 
 ---
 
-#### 📊 OpenGUI-Eval (Evaluation)
+### 📊 OpenGUI-Eval — Evaluation
+
+> [`opengui-eval/`](opengui-eval/) | [🤗 HuggingFace Dataset](https://huggingface.co/datasets/johnzqlu/opengui-eval) | [🤖 ModelScope](https://modelscope.cn/datasets/Matrix0602/opengui-eval)
+
+OpenGUI-Eval is a standardized evaluation framework for GUI grounding models. It adopts a three-stage **Infer → Judge → Metric** pipeline and covers 6 benchmarks (ScreenSpot-Pro, ScreenSpot-V2, UIVision, MMBench-GUI, OSWorld-G, AndroidControl) with 11+ supported models including Qwen3-VL, Qwen2.5-VL, UI-TARS, MAI-UI, GUI-G2, UI-Venus, Gemini, and Seed 1.8. Both local GPU (transformers) and remote API backends are supported, with multi-GPU parallel inference and automatic resume. Reproduction rate against official numbers: **95.8%**.
 
 ```bash
 cd opengui-eval
@@ -164,11 +113,15 @@ bash scripts/judge/screenspot-pro_run_judge.sh
 bash scripts/metric/run_metric_screenspot_pro.sh
 ```
 
-> For full benchmark support and parameter details, refer to [`opengui-eval/README.md`](opengui-eval/README.md).
+> For full benchmark coverage, model support, and parameter details, see [`opengui-eval/README.md`](opengui-eval/README.md).
 
 ---
 
-#### 🚀 OpenGUI-RL (Online RL Training)
+### 🚀 OpenGUI-RL — Online RL Training
+
+> [`opengui-rl/`](opengui-rl/)
+
+OpenGUI-RL is a scalable online RL infrastructure for GUI agent training. It supports parallel training across dozens of virtual Android environments (via Docker-based MobileWorld), as well as real-device training on physical or cloud phones. Out-of-the-box support for MAI-UI and GUI-Owl, extensible to the Qwen3-VL family. Includes the GiGPO algorithm with PRM for fine-grained step-level reward, spare-server rotation for automatic failover, periodic environment restart for stability, and episode trajectory recording and visualization.
 
 ```bash
 cd opengui-rl
@@ -190,32 +143,11 @@ huggingface-cli download hiyouga/geometry3k --repo-type dataset --local-dir ~/da
 # Launch training (GRPO)
 bash examples/grpo_trainer/run_mobileworld.sh
 
-# Or GiGPO (recommended)
+# Or GiGPO (recommended, uses PRM for better results)
 bash examples/gigpo_trainer/run_mobileworld.sh
 ```
 
-> For real-device training, parameter details and model conversion, refer to [`opengui-rl/README.md`](opengui-rl/README.md).
-
----
-
-## 📈 Experimental Results
-
-We release **OpenGUI-2B**, trained with OpenGUI-RL using the GiGPO algorithm on top of MAI-UI-2B.
-
-### MobileWorld Benchmark (GUI-Only SR)
-
-| Category | Model | SR |
-|----------|-------|----|
-| *Agentic Framework* | Claude-4.5-Sonnet + UI-Ins-7B | 47.8 |
-| | Gemini-3-Pro + UI-Ins-7B | 55.6 |
-| | GPT-5 + UI-Ins-7B | 54.0 |
-| *End-to-End Model* | GUI-Owl-7B | 7.7 |
-| | UI-Venus-72B | 16.4 |
-| | Doubao-1.5-UI-TARS | 26.3 |
-| | MAI-UI-2B (baseline) | 11.1 |
-| | MAI-UI-8B | 19.7 |
-| ***Ours*** | **OpenGUI-2B [GRPO]** | **14.5** |
-| | **OpenGUI-2B [GiGPO]** | **17.1** |
+> For real-device training, parameter details, and model conversion to HuggingFace format, see [`opengui-rl/README.md`](opengui-rl/README.md).
 
 ---
 
