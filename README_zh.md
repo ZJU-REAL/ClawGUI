@@ -1,7 +1,7 @@
 <div align="center">
 
 <h1>
-  <img src="assets/OpenGUI-Logo.png" height="45" alt="OpenGUI Logo" style="vertical-align:middle; margin-right:10px;">
+  <img src="assets/OpenGUI-Logo.png" height="45" alt="OpenGUI Logo" style="vertical-align:bottom; margin-right:10px; margin-top:8px;">
   OpenGUI：统一 GUI 智能体 Harness 系统
 </h1>
 
