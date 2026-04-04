@@ -1,7 +1,7 @@
 <div align="center">
 
 <h1>
-  <img src="assets/OpenGUI-Logo.png" height="45" alt="OpenGUI Logo" style="vertical-align:bottom; margin-right:10px; margin-top:8px;">
+  <img src="assets/OpenGUI-Logo.png" height="45" alt="OpenGUI Logo" style="vertical-align:bottom; margin-right:10px; margin-top:14px;">
   OpenGUI: A Unified GUI Agent Harness
 </h1>
 
