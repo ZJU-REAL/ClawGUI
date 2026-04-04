@@ -25,6 +25,7 @@ experiment_name=realdevice_grpo
 shuffle=False
 checkpoints_path=<path-to-save-checkpoints>
 server_file=../env_server/realdevice_server.txt
+data_source_dir=
 
 # Real device ADB device IDs (run 'adb devices' to find these)
 # - Single device:   device=DEVICE_ID
@@ -56,7 +57,8 @@ task_file=../env_server/realdevice_tasks.txt
 # ============ Data preprocessing ============
 python ../data_preprocess/realdevice_onlinerl.py \
     --task_file $task_file \
-    --total_epochs $total_epochs
+    --total_epochs $total_epochs \
+    ${data_source_dir:+--data_source $data_source_dir}
 
 HYDRA_FULL_ERROR=1 python3 -m verl.trainer.main_ppo \
     algorithm.adv_estimator=$adv_estimator \

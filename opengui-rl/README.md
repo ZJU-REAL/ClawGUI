@@ -1,519 +1,357 @@
-<p align="center">
-    <img src="./docs/gigpo/logo-verl-agent.png" alt="logo" width="55%">
-</p>
+<div align="center">
 
+# OpenGUI-RL: A Scalable Online RL Infrastructure for GUI Agents
 
-<h3 align="center">
-<b>Group-in-Group Policy Optimization for LLM Agent Training</b>
-<br>
-<b>NeurIPS 2025</b>
-</h3>
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
+[![HuggingFace Model](https://img.shields.io/badge/🤗%20HuggingFace-OpenGUI--2B-yellow.svg)](https://huggingface.co/)
+[![arXiv](https://img.shields.io/badge/arXiv-paper-red.svg)](https://arxiv.org/)
 
+[English](README.md) | [中文](README_zh.md)
 
-<p align="center">
-  <a href="https://arxiv.org/abs/2505.10978">
-    <img src="https://img.shields.io/badge/arXiv-Paper-red?style=flat-square&logo=arxiv" alt="arXiv Paper"></a>
-  &nbsp;
-  <a href="https://github.com/langfengQ/verl-agent">
-    <img src="https://img.shields.io/badge/GitHub-Project-181717?style=flat-square&logo=github" alt="GitHub Project"></a>
-  &nbsp;
-  <a href="https://huggingface.co/collections/langfeng01/verl-agent-684970e8f51babe2a6d98554">
-    <img src="https://img.shields.io/badge/HuggingFace-Models-yellow?style=flat-square&logo=huggingface" alt="HuggingFace Models"></a>
-  &nbsp;
-  <a href="https://x.com/langfengq/status/1930848580505620677">
-    <img src="https://img.shields.io/badge/Twitter-Channel-000000?style=flat-square&logo=x" alt="X Channel"></a>
-</p>
+</div>
 
-`verl-agent` is an extension of [veRL](https://github.com/volcengine/verl), specifically designed for training **large language model (LLM) agents via reinforcement learning (RL)**. 
+---
 
-Unlike prior approaches that simply concatenate full interaction histories, `verl-agent` proposes **step-independent multi-turn rollout mechanism**, which allows for **fully customizable** per-step input structures, history management, and memory modules. This design makes `verl-agent` **highly scalable for very long-horizon, multi-turn RL training** (e.g., tasks in ALFWorld can require up to 50 steps to complete).
+## 📚 Table of Contents
 
-`verl-agent` provides a **diverse set of RL algorithms** (including our new algorithm GiGPO) and a **rich suite of agent environments**, enabling the development of reasoning agents in both visual and text-based tasks.
+- [Overview](#-overview)
+- [Architecture](#️-architecture)
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+  - [Virtual Environment Scaling (MobileWorld)](#1-virtual-environment-scaling-mobileworld)
+  - [Real Device Training](#2-real-device-training)
+- [How to Add a New Environment](#-how-to-add-a-new-environment)
+- [Experimental Results](#-experimental-results)
+- [Acknowledgements](#-acknowledgements)
 
-# News
-- [2025.12] `Qwen3-VL` is supported! See example [here](./examples/gigpo_trainer/run_sokoban_qwen3vl.sh).
-- [2025.09] `GiGPO` is now supported by [ROLL](https://github.com/alibaba/ROLL)! [[Document](https://alibaba.github.io/ROLL/docs/English/UserGuide/agentic/agentic_GiGPO)] [[Train Curves](https://github.com/alibaba/ROLL/issues/173#issuecomment-3332106534)].
-- [2025.09] `verl-agent`-style training pipeline is now supported by [OpenManus-RL](https://github.com/OpenManus/OpenManus-RL)!
-- [2025.09] [GiGPO](https://arxiv.org/abs/2505.10978) accepted at [NeurIPS 2025](https://neurips.cc/)! 🎉🎉🎉
-- [2025.08] Add **Search-R1 experiments** and **similarity-based GiGPO**! Check out GiGPO's superior performance in Search-R1 experiments [here](#results).
-- [2025.07] `GiGPO` & `verl-agent` talks at [Agent for SWE meetup](https://lu.ma/e498qhsi) by LF AI & Data Singapore on 7/11.
-- [2025.07] Add modular memory manager. See [here](./agent_system/memory).
-- [2025.06] ***Major update***: Merge all features from the latest [veRL](https://github.com/volcengine/verl). For example, `verl-agent` now supports Qwen3, LoRA, REINFORCE++, and more. Feel free to explore!
-- [2025.05] Code released and paper on `GiGPO` released.
+---
 
-# Quick Feature Summary
-| Feature Category | Supported Capabilities|
-| - | - |
-| **Interaction**          | ✅ Multi-turn Agent-Environment interaction<br>✅ Step-wise interaction<br>✅ Scalable for long-horizon tasks |
-| **Memory**               | ✅ Fully customizable memory module<br>✅ Flexible history management|
-| **Input Flexibility**    | ✅ Fully customizable per-step input structures |
-| **Execution**            | ✅ Parallelized Gym environments<br>✅ Group environments support (for group-based RL)|
-| **Model Support**        | ✅ Qwen3<br>✅ Qwen3-VL<br>✅ Qwen2.5<br>✅ Qwen2.5-VL<br>✅ LLaMA3.2<br>and more |
-| **Modality**             | ✅ Text-only<br>✅ Text + Image (multi-modal) |
-| **Lightweight Training** | ✅ Supports LoRA training |
-| **Environments**         | ✅ ALFWorld<br>✅ WebShop<br> ✅ Search (Tool Calling)<br> ✅ Sokoban<br>✅ Gym Cards<br>✅ AppWorld |
-| **RL Algorithms**        | ✅ GiGPO<br>✅ GRPO<br>✅ PPO<br>✅ DAPO<br>✅ GSPO<br>✅ RLOO<br>✅ REINFORCE++<br>✅ Dynamic sampling & clip-higher supported <br> and more |
-| **Prompt-based Agent**   | ✅ GPT-4o prompt-based agent  |
+## 📖 Overview
 
-# Framework Comparison
-<p align="center">
-    <img src="./docs/gigpo/framework-comparison.png" alt="framework" width="100%">
-</p>
+**OpenGUI-RL** is an open-source online RL infrastructure for GUI agents, designed to be scalable, robust, and extensible.
 
+✨ **Key Features:**
 
-# Table of Contents
+- 🌐 **Parallel multi-environment training** — Scale training across dozens of virtual environments simultaneously, enabling efficient data collection and faster convergence.
+- 📱 **Real-device training support** — Supports training directly on physical Android devices, in addition to virtual environments, opening new possibilities for GUI agent research at production scale.
+- 🤖 **Multi-model support** — Out-of-the-box support for [MAI-UI](https://github.com/sugarandgugu/MAI-UI) and [GUI-Owl](https://github.com/sugarandgugu/GUI-Owl) GUI-Spec models, with an easily extensible interface for other VLMs (e.g., Qwen3-VL family).
+- 🔌 **Pluggable custom context** — The context builder is fully modular. Users can inject custom history, screenshots, action spaces, or any additional context into the agent's observation without modifying core training logic.
+- 🔄 **Environment restart & retry mechanisms** — Built-in periodic container restart and configurable retry logic ensure training stability over long runs, making the framework production-ready and robust.
+- ♻️ **Spare server rotation** — Automatically rotates among multiple backend server URLs, enabling graceful degradation and load balancing so that a single unhealthy server never stalls training.
+- 🏆 **GiGPO algorithm** — Integrates the GiGPO algorithm with an embedded Process Reward Model (PRM) for fine-grained step-level scoring, achieving better policy optimization than standard GRPO.
+- 🎬 **Episode trajectory recording & visualization** — Training episodes are automatically saved to the `episode/` directory. Use `scripts/episode_visualizer.py` to replay and inspect any rollout trajectory.
 
-- [Key Features](#key-features)
-- [Results](#results)  
-- [Installation](#installation)  
-  - [Install veRL](#install-verl)  
-  - [Install Supported Environments](#install-supported-environments)  
-    - [1. ALFWorld](#1-alfworld)  
-    - [2. WebShop](#2-webshop)
-    - [3. Search](#3-search)  
-    - [4. Sokoban](#4-sokoban)  
-    - [5. Gym Cards](#5-gym-cards)  
-    - [6. AppWorld (Experimental)](#6-appworld-experimental)  
-- [Run Examples](#run-examples)  
-  - [RL Training](#rl-training)  
-    - [1. GiGPO](#1-gigpo)  
-    - [2. GRPO](#2-grpo)  
-    - [3. PPO](#3-ppo)  
-    - [4. RLOO](#4-rloo)  
-    - [5. DAPO](#5-dapo)  
-    - [6. GiGPO (dynamic)](#6-gigpo-dynamic)
-  - [LoRA](#lora)
-  - [Prompt-based Agent with GPT-4o](#prompt-based-agent-with-gpt-4o)
-- [FAQ](#faq)
-  - [1. Customize Memory Module](#1-customize-memory-module)
-  - [2. Data Preparation](#2-data-preparation)
-  - [3. Customize Your Own Prompts](#3-customize-your-own-prompts)
-  - [4. Add New Environments](#4-add-new-environments)
-- [Contributing](#contributing)
-- [Acknowledgement](#acknowledgement)
-- [Awesome Work Powered by verl-agent & GiGPO](#awesome-work-powered-by-verl-agent--gigpo)
-- [Citation](#citation)
-- [Star History](#star-history)
+---
 
-# Key Features
+## 🏗️ Architecture
 
-- **Multi-Turn Agent-Environment Interaction**
+<div align="center">
+<img src="assets/opengui-rl-framework.png" width="80%" alt="OpenGUI-RL Architecture">
+</div>
 
-  `verl-agent` supports multi-step interactive loops between agents and environments. Agents perceive environmental feedback after each step, forming the basis for reinforcement learning.
+<div align="center">
+<img src="assets/reward_curve.png" width="80%" alt="OpenGUI-2B Training Reward Curve">
+</div>
 
-- **Fully Customizable Memory Module & Per-Step Input Structure**
+---
 
-  `verl-agent` features a **customizable memory module** (see [here](./agent_system/memory)) that allows for flexibly choosing what history to include for each step. The input typically consists of the current observation along with a concise history summary at each step (see prompt [here](./agent_system/environments/prompts/webshop.py)). Developers can **freely define what to include, such as recent steps, key events, summaries, or external knowledge**. There's no requirement to concatenate the full history, and the input structure for each step is ***fully customizable***.
+## 🔧 Installation
 
-- **Scalable for Very Long-Horizon Optimization**
-
-  Prior works like [RAGEN](https://github.com/RAGEN-AI/RAGEN) and [Search-R1](https://github.com/PeterGriffinJin/Search-R1) concatenate the entire history of states and responses. This causes the context length to grow rapidly with the number of turns, making them difficult to scale to long-horizon scenarios. In contrast, `verl-agent` constructs inputs step-by-step. Each input is concise and customizable. This design keeps the context length almost constant over time, making `verl-agent` highly scalable for long-horizon scenarios (e.g., 30–50 steps in ALFWorld) without running into token limits or inefficiency.
-  
-- **Parallelized Gym-Style Environments and Group Environments**
-
-  `verl-agent` provides a gym-style interface with support for parallelized environments. This enables high-throughput rollouts, speeding up training. In addition, `verl-agent` introduces the concept of group environments. All environments within a group share identical initial states during `reset()`. This is especially useful for algorithms like GRPO and DAPO that require multiple rollouts on the same state. You can configure the number of rollouts per group using the `env.rollout.n` in [ppo_trainer.yaml](./verl/trainer/config/ppo_trainer.yaml) config file.
-
-- **Support for Various Models**
-
-  `verl-agent` supports a wide range of LLMs, including `Qwen3`, `Qwen3-VL`, `Qwen2.5`, `LLaMA3.2`, `Qwen2.5-VL`, and others, allowing flexibility for various deployment needs.
-
-- **LoRA Fine-Tuning Support**
-
-  `verl-agent` provides support for [LoRA](https://arxiv.org/abs/2106.09685) (Low-Rank Adaptation), significantly reducing computational cost. Now, `verl-agent` supports training 7B models using 2 H100 GPUs.
-
-- **Vision-Language Agent Support**
-
-  Beyond text-based agents, `verl-agent` also supports training vision-language agents. This enables multi-modal reasoning in environments where both visual perception and language understanding are required.
-
-- **Rich Suite of Environments**
-  
-  `verl-agent` offers a diverse set of interactive environments including [Search-R1](https://github.com/PeterGriffinJin/Search-R1) experiment, embodied AI environments like [ALFWorld](https://github.com/alfworld/alfworld), visual games such as [Sokoban](https://github.com/mpSchrader/gym-sokoban) and [Gym Cards](https://github.com/RL4VLM/RL4VLM/blob/main/gym-cards/README.md), and digital interface control tasks like [WebShop](https://github.com/princeton-nlp/WebShop) and [AppWorld](https://github.com/stonybrooknlp/appworld/) (experimental). 
-
-- **Diverse RL Algorithms**
-
-  `verl-agent` includes implementations of various RL algorithms, such as [GRPO](https://arxiv.org/abs/2402.03300), [PPO](https://arxiv.org/abs/1707.06347), [DAPO](https://arxiv.org/abs/2503.14476), [GSPO](https://arxiv.org/abs/2507.18071), [RLOO](https://arxiv.org/abs/2402.14740) and our new state-of-the-art algorithm [GiGPO](https://arxiv.org/abs/2505.10978). It also supports several variants enhanced with dynamic sampling and clip-higher techniques.
-
-# Results
-> ⚠️ Note: The performance of GiGPO has improved slightly after the "[2025.06.03] Major Update." To reproduce the original paper results, please use the version released prior to the "[2025.06.03] Major Update."
-
-| Algorithm          | Task         | Model      | Success Rate (Paper) | Training Log |
-|-------------------|--------------|--------------------------|-----------------------|-------------------------|
-| GiGPO | ALFWorld     | Qwen2.5-1.5B-Instruct    | 86.7%   |  [![wandb](https://img.shields.io/badge/W%26B-view-FFBE00?logo=wandb)](https://api.wandb.ai/links/langfeng-cs-nanyang-technological-university-singapore/78zz4sc9) |
-| GiGPO | ALFWorld     | Qwen2.5-7B-Instruct      | 90.8%   |  [![wandb](https://img.shields.io/badge/W%26B-view-FFBE00?logo=wandb)](https://api.wandb.ai/links/langfeng-cs-nanyang-technological-university-singapore/78zz4sc9) |
-| GiGPO | WebShop      | Qwen2.5-1.5B-Instruct    | 67.4%   |  [![wandb](https://img.shields.io/badge/W%26B-view-FFBE00?logo=wandb)](https://api.wandb.ai/links/langfeng-cs-nanyang-technological-university-singapore/zfnvpvxe) |
-| GiGPO | WebShop      | Qwen2.5-7B-Instruct      | 75.2%   |  [![wandb](https://img.shields.io/badge/W%26B-view-FFBE00?logo=wandb)](https://api.wandb.ai/links/langfeng-cs-nanyang-technological-university-singapore/zfnvpvxe) |
-| GiGPO | Sokoban [6x6]| Qwen2.5-VL-3B-Instruct   | 81.0%   | [![wandb](https://img.shields.io/badge/W%26B-view-FFBE00?logo=wandb)](https://api.wandb.ai/links/langfeng-cs-nanyang-technological-university-singapore/xm92tyea) |
-| GiGPO | EZPoints     | Qwen2.5-VL-3B-Instruct   | 100.0%  |  [![wandb](https://img.shields.io/badge/W%26B-view-FFBE00?logo=wandb)](https://api.wandb.ai/links/langfeng-cs-nanyang-technological-university-singapore/k0y51zei) |
-| GiGPO | NumberLine   | Qwen2-VL-2B-Instruct     | 100.0%  | [![wandb](https://img.shields.io/badge/W%26B-view-FFBE00?logo=wandb)](https://api.wandb.ai/links/langfeng-cs-nanyang-technological-university-singapore/81qzsc3n) |
-
-
-<table border="1" cellspacing="0" cellpadding="5">
-  <thead>
-    <tr>
-      <th>Date</th>
-      <th>Method</th>
-      <th>NQ†</th>
-      <th>TriviaQA*</th>
-      <th>PopQA*</th>
-      <th>HotpotQA†</th>
-      <th>2Wiki*</th>
-      <th>MuSiQue*</th>
-      <th>Bamboogle*</th>
-      <th>Avg.</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td colspan="10" align="center"><b>Qwen2.5-3B-Instruct</b></td>
-    </tr>
-    <tr>
-      <td>2025.03</td><td>R1-Instruct</td><td>27.0</td><td>53.7</td><td>19.9</td><td>23.7</td><td>29.2</td><td>7.2</td><td>29.3</td><td>27.1</td>
-    </tr>
-    <tr>
-      <td>2025.03</td><td>Search-R1</td><td>34.1</td><td>54.5</td><td>37.8</td><td>32.4</td><td>31.9</td><td>10.3</td><td>26.4</td><td>32.5</td>
-    </tr>
-    <tr>
-      <td>2025.05</td><td>ZeroSearch</td><td>41.4</td><td>57.4</td><td>44.8</td><td>27.4</td><td>30.0</td><td>9.8</td><td>11.1</td><td>31.7</td>
-    </tr>
-    <tr>
-      <td>2025.05</td><td>StepSearch</td><td>-</td><td>-</td><td>-</td><td>34.5</td><td>32.0</td><td>17.4</td><td>34.4</td><td>-</td>
-    </tr>
-    <tr>
-      <td>2025.05</td><td><b>GiGPO</b><a href="https://api.wandb.ai/links/langfeng-cs-nanyang-technological-university-singapore/1dd48ymw" target="_blank">
-      <img src="https://img.shields.io/badge/W%26B-view-FFBE00?logo=wandb" alt="wandb link"/>
-    </a></td><td>42.0</td><td>59.5</td><td>42.4</td><td>36.9</td><td>37.0</td><td>12.6</td><td>64.1</td><td>42.1</td>
-    </tr>
-    <tr>
-      <td colspan="10" align="center"><b>Qwen2.5-7B-Instruct</b></td>
-    </tr>
-    <tr>
-      <td>2025.03</td><td>R1-Instruct</td><td>21.0</td><td>44.9</td><td>17.1</td><td>20.8</td><td>27.5</td><td>6.0</td><td>19.2</td><td>22.4</td>
-    </tr>
-    <tr>
-      <td>2025.03</td><td>Search-R1</td><td>39.3</td><td>61.0</td><td>39.7</td><td>37.0</td><td>40.1</td><td>14.6</td><td>36.8</td><td>38.5</td>
-    </tr>
-    <tr>
-      <td>2025.05</td><td>ZeroSearch</td><td>43.6</td><td>61.8</td><td>51.5</td><td>34.6</td><td>35.2</td><td>18.4</td><td>27.8</td><td>39.1</td>
-    </tr>
-    <tr>
-      <td>2025.05</td><td>StepSearch</td><td>-</td><td>-</td><td>-</td><td>38.6</td><td>36.6</td><td>22.6</td><td>40.0</td><td>-</td>
-    </tr>
-    <tr>
-      <td>2025.05</td><td><b>GiGPO</b><a href="https://api.wandb.ai/links/langfeng-cs-nanyang-technological-university-singapore/1dd48ymw" target="_blank">
-      <img src="https://img.shields.io/badge/W%26B-view-FFBE00?logo=wandb" alt="wandb link"/>
-    </a></td><td>46.4</td><td>64.7</td><td>46.1</td><td>41.6</td><td>43.6</td><td>18.9</td><td>68.9</td><td>47.2</td>
-    </tr>
-  </tbody>
-</table>
-
-
-We have released our models on [HuggingFace](https://huggingface.co/collections/langfeng01/verl-agent-684970e8f51babe2a6d98554).
-
-# Installation
-## Install veRL
 ```bash
-conda create -n verl-agent python==3.12 -y
-conda activate verl-agent
+conda create -n opengui-rl python=3.12 -y
+conda activate opengui-rl
 
 pip3 install vllm==0.11.0
 
 pip3 install flash-attn==2.7.4.post1 --no-build-isolation --no-cache-dir
+
 pip install -e .
 ```
 
-## Install Supported Environments
-> ⚠️ **Important:** 
-To run an agent in any of these environments, you must first install and configure the corresponding environment. We strongly recommend installing ***each environment in its own dedicated conda environment*** to avoid potential package version conflicts.
-
-### 1. ALFWorld
-Install with pip:
-```bash
-pip3 install gymnasium==0.29.1
-pip3 install stable-baselines3==2.6.0
-pip install alfworld
-```
-
-Download PDDL & Game files and pre-trained MaskRCNN detector (will be stored in `~/.cache/alfworld/`):
-```bash
-alfworld-download -f
-```
-
-Use `--extra` to download pre-trained checkpoints and seq2seq data.
-
-Play a Textworld game:
-```bash
-alfworld-play-tw
-```
 ---
 
-### 2. WebShop
-WebShop requires Python <=3.10, so begin by creating a new `verl-agent-webshop` environment
-```bash
-conda create -n verl-agent-webshop python==3.10 -y
-conda activate verl-agent-webshop
-```
+## 🚀 Quick Start
 
-Install WebShop
-```bash
-cd ./agent_system/environments/env_package/webshop/webshop
-./setup.sh -d all
-```
-
-Note: If you encounter issues with gdown, you may need to visit `https://drive.google.com/`, get your Google Drive cookie, and paste it into `.cache/gdown/cookies.txt`.
-Or you may need to manually download the files.
-
-After WebShop is installed, return to the root directory of the repository and install the verl package in `verl-agent`:
-```bash
-cd repo_root/
-pip3 install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
-pip3 install flash-attn==2.7.4.post1 --no-build-isolation
-pip3 install -e .
-pip3 install vllm==0.8.2
-# spacy 3.7.2 requires typer<0.10.0,>=0.3.0, but you have typer 0.15.2 which is incompatible.
-# weasel 0.3.4 requires typer<0.10.0,>=0.3.0, but you have typer 0.15.2 which is incompatible.
-```
-The warnings can be safely ignored.
+OpenGUI-RL supports two training modes: **virtual environment scaling** (via Docker-based MobileWorld) and **real device training** (via physical or cloud Android phones).
 
 ---
 
-### 3. Search
+### 1. Virtual Environment Scaling
+
+#### Step 1 — Clone OpenGUI-Server
+
 ```bash
-cd ./agent_system/environments/env_package/search/third_party
-pip install -e .
-pip install gym==0.26.2
+git clone https://github.com/sugarandgugu/OpenGUI-Server.git
 ```
 
-Prepare dataset (data will be saved at `~/data/searchR1_processed_direct`):
-```bash
-cd repo_root/
-python examples/data_preprocess/preprocess_search_r1_dataset.py
+#### Step 2 — Set up the server
+
+Follow the installation guide in the OpenGUI-Server repository. Key steps include:
+
+1. **Verify KVM support** — Ensure your machine supports KVM virtualization (`kvm-ok` or check `/dev/kvm`).
+2. **Pull the Docker image** — Pull the MobileWorld Android emulator image as described in the OpenGUI-Server docs.
+3. **Launch Docker containers** — Start one or more containers. Each running container exposes a backend URL (e.g., `http://127.0.0.1:PORT`).
+
+After this step, each container provides an API backend URL that OpenGUI-RL will use to interact with the emulated phone.
+
+#### Step 3 — Register environment URLs
+
+Fill in your container backend URLs, one per line, into:
+
+```
+examples/env_server/mobileworld_server.txt
 ```
 
+The number of lines equals the number of parallel environments. More URLs = more parallel environments = faster training.
 
-Since faiss-gpu is not available via pip, we setup a separate conda environment for the local retrieval server. Running this server will use around 6GB of GPU memory per GPU, so make sure to account for this in your training run configuration. Build Retriever environments:
-```bash
-# Create and activate the retriever environment with Python 3.10
-conda create -n retriever python=3.10 -y
-conda activate retriever
-
-# Install PyTorch (with GPU support) and related libraries
-conda install numpy==1.26.4 # needed to stop incompatible version of numpy from being installed via pip
-pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
-
-# Install other Python packages
-pip install transformers datasets pyserini huggingface_hub
-
-# Install the GPU version of faiss
-conda install faiss-gpu==1.8.0 -c pytorch -c nvidia -y
-
-# Install the API service framework
-pip install uvicorn fastapi
+**Example:**
+```
+http://127.0.0.1:5000
+http://127.0.0.1:5001
+http://127.0.0.1:5002
 ```
 
-Download the index:
-```bash
-conda activate retriever
+#### Step 4 — Download training data
 
-local_dir=~/data/searchR1
-python examples/search/searchr1_download.py --local_dir $local_dir
-cat $local_dir/part_* > $local_dir/e5_Flat.index
-gzip -d $local_dir/wiki-18.jsonl.gz
+Download the [hiyouga/geometry3k](https://huggingface.co/datasets/hiyouga/geometry3k) dataset to a local directory. This dataset is used by the data preprocessing pipeline as a curriculum data source.
+
+```bash
+huggingface-cli download hiyouga/geometry3k --repo-type dataset --local-dir ~/data/geometry3k
 ```
 
-Start the local flat e5 retrieval server: 
-```bash
-conda activate retriever
+#### Step 5 — Configure the training script
 
-# redirect the output to a file to avoid cluttering the terminal
-# we have observed outputting to the terminal causing spikes in server response times
-bash examples/search/retriever/retrieval_launch.sh > retrieval_server.log 
+Open `examples/grpo_trainer/run_mobileworld.sh` and configure the parameters:
+
+| Parameter | Description |
+|-----------|-------------|
+| `model_path` | Path to your local model weights (e.g., MAI-UI-2B or GUI-Owl-1.5-2B) |
+| `model_type` | Model type: `mai_ui` or `gui_owl` |
+| `n_gpus` | Number of GPUs to use for training |
+| `history_length` | Number of previous steps included in the agent's context |
+| `max_steps` | Maximum steps per episode |
+| `total_epochs` | Number of training epochs |
+| `train_data_size` | Batch size per training step |
+| `group_size` | Number of rollouts per sample (GRPO group size) |
+| `adv_estimator` | Advantage estimator: `grpo` or `gigpo` |
+| `checkpoints_path` | Local directory to save model checkpoints |
+| `data_source_dir` | Path to the downloaded geometry3k dataset directory |
+| `server_file` | Path to the server URL list file (default: `../env_server/mobileworld_server.txt`) |
+| `experiment_name` | Name of the experiment (used for logging) |
+| `step_reward_judge` | Enable PRM-based step reward judge (`True`/`False`) |
+| `step_reward_judge_base_url` | Base URL of the step reward judge API (required if enabled) |
+| `step_reward_judge_model_name` | Model name for the step reward judge |
+| `env_restart_enable` | Enable periodic environment container restart (`True`/`False`) |
+| `env_restart_every_n_steps` | Restart containers every N training steps |
+| `env_restart_wait` | Seconds to wait after issuing a restart command |
+
+#### Step 6 — Install the logger
+
+We use [SwanLab](https://swanlab.cn/) as the default training logger. Install it with:
+
+```bash
+pip install swanlab
 ```
 
-### 4. Sokoban
+You can replace it with other loggers (e.g., `wandb`, `tensorboard`) by modifying `trainer.logger` in the script.
+
+#### Step 7 — Launch training
+
+> **Important — Server count requirement:**
+> The number of URLs in `mobileworld_server.txt` must be **≥ `train_batch_size` × `group_size`** (i.e., the total number of parallel rollout workers). We strongly recommend registering **extra spare servers** beyond this minimum. Virtual containers are prone to errors (e.g., screenshot failures, task init errors, unhealthy device state). When an active server encounters an error, the system will automatically rotate to a spare server to keep training running without interruption.
+>
+> **Example:** If `train_batch_size=4` and `group_size=4`, you need at least 16 active servers. Registering 24 URLs gives you 8 spare servers for rotation.
+
 ```bash
-pip install matplotlib
-pip install gym==0.26.2
-pip install gym_sokoban==0.0.6
+bash examples/grpo_trainer/run_mobileworld.sh
 ```
+
+> **Note:** We have verified GRPO and GiGPO training. Other algorithms are welcome to be tested.
+
+**GiGPO training** integrates a Process Reward Model (PRM) for finer-grained step-level reward signals, generally yielding better performance than GRPO. To use it:
+
+```bash
+bash examples/gigpo_trainer/run_mobileworld.sh
+```
+
 ---
-### 5. Gym Cards
+
+### 2. Real Device Training
+
+Real-device training is a notoriously challenging problem in the industry. It involves app login verification, device management, and large-scale scaling concerns. OpenGUI-RL provides a validated end-to-end pipeline for physical Android devices. We have verified training on two real phones. Users can adapt this setup for cloud phones — the interaction protocol is identical.
+
+#### Step 1 — Prepare your Android device
+
+If you have already cloned OpenGUI-Server, connect a physical Android phone to your computer via USB.
+
+> **Running on a remote server?** If your training runs on a remote server but you want to connect a local phone via USB, you can set up port forwarding between your local machine and the server. For detailed steps, refer to the real-device training section in the OpenGUI-Server documentation.
+
+#### Step 2 — Enable developer mode & USB debugging
+
+On your phone:
+1. Go to **Settings → About Phone** and tap **Build Number** 10 times to unlock Developer Options.
+2. In **Developer Options**, enable **USB Debugging**.
+
+#### Step 3 — Install ADB Keyboard (optional but recommended)
+
+ADB Keyboard allows programmatic text input via ADB, which is required for typing tasks.
 
 ```bash
-cd repo_root/
-pip3 install -e ./agent_system/environments/env_package/gym_cards/gym-cards/
-pip3 install gymnasium==0.29.1
-pip3 install stable-baselines3==2.6.0
+adb install ADBKeyboard.apk
+adb shell ime enable com.android.adbkeyboard/.AdbIME
 ```
+
+#### Step 4 — Start the MobileWorld server
+
+```bash
+uv run mobile-world server
+```
+
+#### Step 5 — Test device connectivity
+
+Use the OpenGUI-Server test script to verify that your device is recognized:
+
+```bash
+python test_true_device.py
+```
+
+Make sure the correct `device_id` is set (check with `adb devices`).
+
+#### Step 6 — Register device backend URL
+
+Fill the OpenGUI-Server API backend URL into:
+
+```
+examples/env_server/realdevice_server.txt
+```
+
+#### Step 7 — Configure training tasks
+
+Write your training tasks (one task per line) into:
+
+```
+examples/env_server/realdevice_tasks.txt
+```
+
+#### Step 8 — Configure and launch training
+
+Both **GRPO** and **GiGPO** are supported for real device training. Fill in your `device_id` and configure the scripts:
+
+**GRPO:**
+```bash
+# Edit examples/grpo_trainer/run_realdevice.sh, then:
+bash examples/grpo_trainer/run_realdevice.sh
+```
+
+**GiGPO (recommended):**
+```bash
+# Edit examples/gigpo_trainer/run_realdevice.sh, then:
+bash examples/gigpo_trainer/run_realdevice.sh
+```
+
+Key parameters specific to real device training:
+
+| Parameter | Description |
+|-----------|-------------|
+| `model_path` | Path to your model weights (MAI-UI-2B or GUI-Owl) |
+| `model_type` | Model type: `mai_ui` or `gui_owl` |
+| `device` | ADB device ID(s). Single: `DEVICE_ID`; Multiple (comma-separated): `DEVICE_ID1,DEVICE_ID2`; Auto-detect: `auto` |
+| `server_file` | Path to `realdevice_server.txt` |
+| `task_file` | Path to `realdevice_tasks.txt` |
+| `data_source_dir` | Path to the geometry3k dataset (same as MobileWorld; leave empty to use default `~/data/geometry3k`) |
+| `step_reward_judge` | Enable PRM step-level reward (`True`/`False`) |
+| `step_reward_judge_base_url` | Step reward judge API URL |
+| `step_reward_judge_model_name` | Step reward judge model name |
+| `task_eval_judge` | Enable VLM-based task completion evaluation (`True`/`False`). When the agent outputs `answer`/`terminate`, the judge scores the result: score=1 → reward=1; score=0 → reward=0 |
+| `task_eval_judge_base_url` | Task eval judge API URL |
+| `task_eval_judge_model_name` | Task eval judge model name |
+| `adv_estimator` | `grpo` or `gigpo` |
+| `mode` | GiGPO normalization mode: `mean_norm` or `mean_std_norm` |
+| `max_steps` | Maximum steps per episode (recommend 7 for real device) |
+| `group_size` | Rollout group size per sample |
+| `checkpoints_path` | Directory to save checkpoints |
+
+> **Note:** Due to physical device limitations, we have not validated large-scale real-device training. We recommend cloud phones for large-scale experiments, as the interaction protocol is identical.
+
 ---
-### 6. AppWorld (Experimental)
-Install AppWorld package
-```bash
-cd repo_root/
-pip install git+https://github.com/StonyBrookNLP/appworld.git
-appworld install
-pip install -e .
-```
-You can ignore the warning of incompatibility for appworld, because we don't run appworld in `verl-agent` environment.
 
-Create a dedicated conda environment `appworld` for the AppWorld server:
-```bash
-conda create -n appworld python=3.12 -y
-conda activate appworld
-pip install git+https://github.com/StonyBrookNLP/appworld.git
-appworld install
-appworld download data
-```
+### 3. Convert Checkpoint to HuggingFace Format
 
-
-<!-- > ⚠️ **Important:**  
-To run an agent in any of these environments, you must first install and configure the corresponding environment. Please refer to the [Environment Setup Guide](agent_system/environments/README.md) for step-by-step installation instructions. -->
-
-# Run Examples
-## RL Training
-We provide out-of-the-box scripts in the ["examples/"](./examples/) directory for training agents in different environments.
-
-Here are some examples:
-### 1. GiGPO
-GiGPO is our novel algorithm designed to support fine-grained credit assignment in long-horizon LLM agent training. It introduces a two-level grouping mechanism:
-- Episode-level groups capture overall task success via total returns (like GRPO).
-- Step-level groups gather repeated states across trajectories to compute relative advantages for individual actions.
-
-GiGPO is fully critic-free, maintains the same GPU memory footprint and LLM rollout cost as GRPO, yet achieves significantly better training efficiency and performance.
+After training, the saved checkpoint is in FSDP format. Use `scripts/model_merger.py` to convert it to a standard HuggingFace model:
 
 ```bash
-bash examples/gigpo_trainer/run_alfworld.sh # ALFWorld
+python scripts/model_merger.py merge \
+    --backend fsdp \
+    --local_dir gigpo_maiui2b_exp1/global_step_15/actor \
+    --target_dir gigpo_maiui2b_exp1/global_step_15/hf
 ```
+
+### 4. Visualize Episode Trajectories
+
+Training episodes are automatically saved to the `episode/` directory. You can replay and inspect any rollout trajectory with:
+
 ```bash
-bash examples/gigpo_trainer/run_webshop.sh # WebShop
-```
-```bash
-bash examples/gigpo_trainer/run_search.sh # Search
-```
-```bash
-bash examples/gigpo_trainer/run_sokoban.sh # Sokoban
-```
-### 2. GRPO
-GRPO is a critic-free algorithm that estimates relative advantages based on a group of full episode trajectories.
-```bash
-bash examples/grpo_trainer/run_alfworld.sh # ALFWorld
-```
-```bash
-bash examples/grpo_trainer/run_webshop.sh # WebShop
-```
-### 3. PPO
-PPO is a classic actor-critic algorithm that updates the policy using a clipped objective to ensure stable learning. It requires a separate value network (critic) to estimate state values.
-```bash
-bash examples/ppo_trainer/run_alfworld.sh # ALFWorld
-```
-```bash
-bash examples/ppo_trainer/run_webshop.sh # WebShop
-```
-### 4. RLOO
-For RLOO, we use a leave-one-out estimate and the PPO-clip update (instead of the REINFORCE update), making it closer to [LOOP](https://arxiv.org/abs/2502.01600).
-```bash
-bash examples/rloo_trainer/run_alfworld.sh # ALFWorld
-```
-```bash
-bash examples/rloo_trainer/run_webshop.sh # WebShop
-```
-### 5. DAPO
-DAPO enhances GRPO with techniques like dynamic sampling and clip-higher.
-```bash
-bash examples/dapo_trainer/run_alfworld.sh # ALFWorld
-```
-```bash
-bash examples/dapo_trainer/run_webshop.sh # WebShop
-```
-### 6. GiGPO (dynamic)
-GiGPO uses dynamic sampling and clip-higher from DAPO
-```bash
-bash examples/gigpo_dynamic_trainer/run_alfworld.sh # ALFWorld
-```
-```bash
-bash examples/gigpo_dynamic_trainer/run_webshop.sh # WebShop
+python scripts/episode_visualizer.py --episode_dir episode/<your_episode>
 ```
 
-## LoRA
-```bash
-bash examples/gigpo_trainer/run_alfworld_lora.sh
-```
+---
 
-## Prompt-based Agent with GPT-4o
-We also provide a prompt-based GPT-4o agent.
-```bash
-bash examples/prompt_agent/run_gpt4o_agent.sh
-```
+## 🧩 How to Add a New Environment
 
-# FAQ
+Want to scale on cloud phones, or add a completely new environment? Cloud phones follow the same protocol as real-device training — the difference is only that phones are hosted remotely.
 
-## 1. Customize Memory Module
-`verl-agent` supports a customizable and flexible memory system for managing and formatting interaction history between the agent and the environment. We provide a [SimpleMemory](./agent_system/memory/memory.py) implementation as a default starting point. This memory module is invoked within [env_manager.py](./agent_system/environments/env_manager.py) (i.e., `build_text_obs()`) to construct the observation at each step. 
+You can implement a new environment by referencing the existing implementations:
 
-Developers are encouraged to extend this module with custom memory strategies, such as dynamic summarization, selective memory retention, or external knowledge integration, to improve the handling of long-horizon interaction histories.
+- **MobileWorld**: `agent_system/environments/env_package/mobileworld/`
+- **RealDevice**: `agent_system/environments/env_package/realdevice/`
 
-## 2. Data Preparation
-For most environments (e.g., AFLWorld, WebShop, Sokoban), we only use data preparation to indicate the modality, either "text" or "visual". For example, if the task is purely text-based, the data will just be an empty string "". If it involves visual input, it will be "\<image\>". As for agent input (including task instruction, observation and prompt), we follow the classical RL pipeline. That means the input of LLM agent comes from the environment's feedback through `env.step()`. In the case of search-r1 experiments where tasks are drawn from a dataset, we leverage the [env_kwargs](./examples/data_preprocess/preprocess_search_r1_dataset.py#L90) parameter to pass tasks into the environment, using: [envs.reset(kwargs=gen_batch.non_tensor_batch.pop('env_kwargs', None))](./agent_system/multi_turn_rollout/rollout_loop.py#L301).
+Each environment package implements a standard interface for:
+- Resetting the environment and returning the initial observation
+- Executing an action and returning the next observation + reward signal
+- Termination / episode end detection
 
-## 3. Customize Your Own Prompts  
-We adopt a simple and minimal prompt format in our implementation. For example, in the WebShop environment:
-```
-You are an expert autonomous agent operating in the WebShop e‑commerce environment.
-Your task is to: {task_description}. Prior to this step, you have already taken {step_count} step(s). Below are the most recent {history_length} observations and the corresponding actions you took: {action_history}. You are now at step {current_step} and your current observation is: {current_observation}. Your admissible actions of the current situation are: [{available_actions}].
+This modular design also means you can train GUI-Spec models other than MAI-UI and GUI-Owl — including general VLMs from the Qwen3-VL series — by implementing the appropriate model adapter alongside the environment.
 
-Now it's your turn to take one action for the current step.
-You should first reason step-by-step about the current situation, then think carefully which admissible action best advances the shopping goal. This reasoning process MUST be enclosed within <think> </think> tags. Once you've finished your reasoning, you should choose an admissible action for current step and present it within <action> </action> tags.
-```
-If you wish to further enhance or customize them, you can find and edit them in: [agent_system/environments/prompts](./agent_system/environments/prompts/).
+---
 
+## 📈 Experimental Results
 
-## 4. Add New Environments
-To add a new environment, 
-1. Create your environment package (gym-style interface and multi-process execution) in [agent_system/environments/env_package/](./agent_system/environments/env_package/)
-2. Define the corresponding prompt files in [agent_system/environments/prompts](./agent_system/environments/prompts/). 
-3. Register your new environment in [env_manager.py](./agent_system/environments/env_manager.py), following the structure defined by [EnvironmentManagerBase](./agent_system/environments/base.py#L19). 
+We release **OpenGUI-2B**, a GUI agent trained using the OpenGUI-RL framework with the GiGPO algorithm, based on MAI-UI-2B as the base model.
 
-For a reference implementation, see the webshop environment:
-1. Environment package: [webshop package](./agent_system/environments/env_package/webshop)
-2. Prompts: [webshop prompts](./agent_system/environments/prompts/webshop.py)
-3. Environment Manager: [webshop env manager](./agent_system/environments/env_manager.py#L304)
+### MobileWorld Benchmark Results
 
+| Category | Model | MobileWorld SR (GUI-Only) |
+|----------|-------|:------------------------:|
+| *Agentic Framework* | Claude-4.5-Sonnet + UI-Ins-7B | 47.8 |
+| | Gemini-3-Pro + UI-Ins-7B | 55.6 |
+| | GPT-5 + UI-Ins-7B | 54.0 |
+| *End-to-End Model* | GUI-Owl-7B | 7.7 |
+| | GUI-Owl-32B | 8.5 |
+| | UI-Venus-7B | 8.5 |
+| | UI-Venus-72B | 16.4 |
+| | Qwen3-VL-8B | 9.4 |
+| | Qwen3-VL-32B | 11.9 |
+| | Qwen3-VL-235B-A22B | 12.8 |
+| | Doubao-1.5-UI-TARS | 26.3 |
+| | MAI-UI-2B (baseline) | 11.1 |
+| | MAI-UI-8B | 19.7 |
+| ***Ours*** | **OpenGUI-2B [GRPO]** | **14.5** |
+| | **OpenGUI-2B [GiGPO]** | **17.1** |
 
-# Contributing
+---
 
-We welcome and appreciate all contributions! If you have ideas to improve `verl-agent`, please feel free to submit a pull request (PR).
+## 🙏 Acknowledgements
 
-Example contributions include:
-- **AppWorld Bug Fixes**: Fixed compatibility issues and ensured stable integration with the experimental AppWorld environment.
-- **Asynchronous Rollout**: Improved training efficiency and throughput by supporting asynchronous rollout pipelines.
-- **Additional Environments**: Added support for additional interactive environments to expand the benchmark coverage and task diversity.
+OpenGUI-RL is built upon the following excellent open-source projects. We sincerely thank their contributors:
 
-# Acknowledgement
+- [**verl-agent**](https://github.com/volcengine/verl) — The underlying RL training engine
+- [**MAI-UI**](https://github.com/sugarandgugu/MAI-UI) — GUI-Spec model and GUI action framework
+- [**MobileWorld**](https://github.com/X-PLUG/MobileWorld) — Android emulator environment
+- [**Mobile-Agent**](https://github.com/X-PLUG/MobileAgent) — Mobile agent research and infrastructure
 
-`verl-agent` codebase is built upon [veRL](https://github.com/volcengine/verl). 
-The supported environments are adapted from [ALFWorld](https://github.com/alfworld/alfworld), [Sokoban](https://github.com/mpSchrader/gym-sokoban), [SkyRL-Gym](https://github.com/NovaSky-AI/SkyRL/tree/main/skyrl-gym), [Search-R1](https://github.com/PeterGriffinJin/Search-R1), [Gym Cards](https://github.com/RL4VLM/RL4VLM/tree/main/gym-cards), [WebShop](https://github.com/princeton-nlp/WebShop), and [AppWorld](https://github.com/stonybrooknlp/appworld). We extend our gratitude to the authors and contributors of these projects for their valuable work.
+---
 
-We would also like to thank the following contributors for their specific improvements to this project: WebShop bug fix ([@YSLIU627](https://github.com/YSLIU627)), GSPO support ([@MakeKJ](https://github.com/MakeKJ)), Qwen3-VL support ([@FabianSchuetze](https://github.com/FabianSchuetze)).
+## 📄 License
 
-# Awesome Work Powered by verl-agent & GiGPO
-
-- [OpenManus-RL](https://github.com/OpenManus/OpenManus-RL): An open-source framework for live-stream reinforcement learning tuning of LLM agents. [![[code]](https://img.shields.io/github/stars/OpenManus/OpenManus-RL)](https://github.com/OpenManus/OpenManus-RL)
-- [RLVMR](https://github.com/Tencent/DigitalHuman/tree/main/RLVMR): Providing agents with fine-grained meta-reasoning rewards in long-horizon tasks. [![[code]](https://img.shields.io/github/stars/Tencent/DigitalHuman)](https://github.com/Tencent/DigitalHuman/tree/main/RLVMR)
-- [UI-S1](https://github.com/X-PLUG/MobileAgent/tree/main/UI-S1): A GUI automation model using semi-online reinforcement learning for stable long-horizon task execution. [![[code]](https://img.shields.io/github/stars/X-PLUG/MobileAgent)](https://github.com/X-PLUG/MobileAgent/tree/main/UI-S1)
-- [Agent Learning via Early Experience](https://arxiv.org/pdf/2510.08558): A scalable, reward-free paradigm that bridges imitation learning and RL via implicit world modeling and self-reflection.
-- [SPEAR](https://github.com/TencentYoutuResearch/SPEAR): **Self-imitation** with **Progressive Exploration** for Agentic Reinforcement Learning (ICLR 2026). [![[code]](https://img.shields.io/github/stars/TencentYoutuResearch/SPEAR)](https://github.com/TencentYoutuResearch/SPEAR/tree/main/)
-
-# Citation
-If you find `verl-agent` and `GiGPO` useful in your research or applications, we would appreciate it if you could cite our work:
-
-```
-@article{feng2025group,
-  title={Group-in-Group Policy Optimization for LLM Agent Training},
-  author={Feng, Lang and Xue, Zhenghai and Liu, Tingcong and An, Bo},
-  journal={arXiv preprint arXiv:2505.10978},
-  year={2025}
-}
-```
-
-# Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=langfengQ/verl-agent&type=Date)](https://www.star-history.com/#langfengQ/verl-agent&Date)
+This project is licensed under the [Apache License 2.0](LICENSE).

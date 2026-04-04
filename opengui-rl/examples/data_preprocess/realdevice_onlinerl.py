@@ -56,6 +56,8 @@ if __name__ == '__main__':
     parser.add_argument('--val_data_size', default=1, type=int)
     parser.add_argument('--total_epochs', default=3, type=int,
                         help='Total training epochs — tasks will be repeated this many times')
+    parser.add_argument('--data_source', default=None,
+                        help='Path to geometry3k dataset (default: ~/data/geometry3k)')
 
     args = parser.parse_args()
     print(f"[RealDevice Data] Processing data for mode: {args.mode}")
