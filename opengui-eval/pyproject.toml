@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "opengui-eval"
 version = "0.1.0"
-description = "OpenGUI-Eval: GUI Grounding Evaluation Framework"
+description = "OpenGUI-Eval: GUI Evaluation Framework"
 readme = "README_zh.md"
 requires-python = "==3.12.*"
 license = { text = "Apache-2.0" }

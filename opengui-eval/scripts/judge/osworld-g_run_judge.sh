@@ -2,18 +2,18 @@
 # ======================
 # Experiment Configuration
 # ======================
-EXP_NAME="qwen25vl-7b-exp1"
+EXP_NAME="guiowl15-8b-exp"
 
 # ======================
 # Model Configuration
 # ======================
 # options: maiui qwen3vl qwen25vl uitars stepgui uivenus uivenus15 guiowl15 guig2
-MODEL_TYPE="qwen25vl"
+MODEL_TYPE="guiowl15"
 
 # Whether to include refusal samples in the accuracy denominator.
 # ""                = exclude (reported separately)
 # "--include_refusal" = include (relevant for uivenus15/guiowl15 on osworld-g)
-INCLUDE_REFUSAL=""
+INCLUDE_REFUSAL="--include_refusal"
 
 # ======================
 # Benchmark List

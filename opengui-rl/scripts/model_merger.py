@@ -19,8 +19,8 @@ To merge FSDP checkpoints:
 ```sh
 python scripts/model_merger.py merge \
     --backend fsdp \
-    --local_dir /home/tangfei/online_rl_exps/gigpo_maiui2b_exp1/global_step_15/actor \
-    --target_dir /home/tangfei/online_rl_exps/gigpo_maiui2b_exp1/global_step_15/hf
+    --local_dir gigpo_maiui2b_exp1/global_step_15/actor \
+    --target_dir gigpo_maiui2b_exp1/global_step_15/hf
 ```
 
 To merge Megatron checkpoints:

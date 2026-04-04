@@ -45,28 +45,22 @@ opengui-eval/MobileWorld/
 opengui-rl/data/geometry3k/
 .codebuddy/
 opengui-eval/image.zip
+opengui-eval/data.zip
+opengui-eval/output.zip
+opengui-eval/data.tar.gz
 opengui-eval/skill.md
 opengui-eval/filter_seed_predictions.py
 opengui-eval/environment.yml
 opengui-eval/env_skill.md
-opengui-eval/output
-opengui-eval/image
-opengui-eval/data
+opengui-eval/output/*
+!opengui-eval/output/.gitkeep
+opengui-eval/image/*
+!opengui-eval/image/.gitkeep
+opengui-eval/data/*
+!opengui-eval/data/.gitkeep
 opengui-eval/scripts/infer/transformers/run_all_transformers_benchmarks.sh
 opengui-eval/scripts/judge/run_all_judge_and_metric.sh
-opengui-eval/scripts/generate_scripts/
 opengui-eval/plot_reproduction.py
 
-# Phone agent runtime data
-openclaw-gui/memory_db/
-openclaw-gui/demo_memory_db/
-
-# Nanobot workspace runtime files
-memory/
-cron/
-sessions/
-AGENTS.md
-SOUL.md
-USER.md
-TOOLS.md
-HEARTBEAT.md
+opengui-rl/assets/gen_reward_curve.py
+OpenGUI-Server
