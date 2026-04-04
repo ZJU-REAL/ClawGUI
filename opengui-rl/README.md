@@ -19,7 +19,7 @@
 - [Architecture](#️-architecture)
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
-  - [Virtual Environment Scaling (MobileWorld)](#1-virtual-environment-scaling-mobileworld)
+  - [Virtual Environment Scaling](#1-virtual-environment-scaling)
   - [Real Device Training](#2-real-device-training)
 - [How to Add a New Environment](#-how-to-add-a-new-environment)
 - [Experimental Results](#-experimental-results)
