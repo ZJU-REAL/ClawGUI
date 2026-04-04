@@ -334,7 +334,7 @@ def update_episode_result(
     eval_reason: str,
     episode_reward: float,
     episode_length: int,
-    save_dir: str = "/home/tangfei/online_rl/verl-agent/episode",
+    save_dir: str = "./opengui-rl/episode",
 ):
     """
     Update an existing episode JSON with the final eval result.
