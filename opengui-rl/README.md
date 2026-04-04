@@ -356,16 +356,9 @@ We release **OpenGUI-2B**, a GUI agent trained using the OpenGUI-RL framework wi
 
 ---
 
-## 🙏 Acknowledgements
+## 📄 License
 
-OpenGUI-RL is built upon the following excellent open-source projects. We sincerely thank their contributors:
-
-- [**verl-agent**](https://github.com/langfengq/verl-agent) — The underlying RL training engine
-- [**MAI-UI**](https://github.com/Tongyi-MAI/MAI-UI) — GUI-Spec model and GUI action framework
-- [**MobileWorld**](https://github.com/Tongyi-MAI/MobileWorld) — Android emulator environment
-- [**Mobile-Agent**](https://github.com/x-plug/mobileagent) — Mobile agent research and infrastructure
-
----
+This project is licensed under the [Apache License 2.0](LICENSE).
 
 ## 📄 License
 
