@@ -1,8 +1,6 @@
 set -x
 export CUDA_VISIBLE_DEVICES=4,5,6,7
 export NCCL_P2P_DISABLE=1
-export iommu=pt
-export RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
 
 # cd to script directory so relative paths work from any working directory
 cd "$(dirname "$0")"
