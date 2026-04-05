@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/OpenGUI-Logo.png" height="100" alt="OpenGUI Logo">
+<img src="assets/OpenGUI-Logo.png" height="60" alt="OpenGUI Logo" align="left">
 
 # OpenGUI: A Unified GUI Agent Harness
 
