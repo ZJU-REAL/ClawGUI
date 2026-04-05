@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>OpenClaw-GUI：基于 OpenClaw 的 GUI Agent 框架</h1>
+  <h1>OpenClaw-GUI: GUI Agent Framework Based on OpenClaw</h1>
   <p>
     <img src="https://img.shields.io/badge/python-≥3.10-blue" alt="Python">
     <img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="License">
@@ -11,95 +11,95 @@
 
 ---
 
-**OpenClaw-GUI** 是基于 [OpenClaw](https://github.com/openclaw/openclaw) 的 GUI Agent 框架，通过集成 [nanobot](https://github.com/HKUDS/nanobot) 个人 AI 助手，提供两大核心能力：**GUI 手机操控**和 **GUI 模型评测**。用户可以在飞书、QQ、Telegram 等聊天平台上用自然语言远程操控手机完成各种任务，也可以一句话启动 [opengui-eval](../opengui-eval) 标准化评测流程。框架底层利用视觉语言模型（VLM）理解屏幕内容、规划并执行 GUI 操作（点击、滑动、输入等），形成"截屏 → 推理 → 操作"的闭环自动化。
+**OpenClaw-GUI** is a GUI Agent framework built on [OpenClaw](https://github.com/openclaw/openclaw). By integrating the [nanobot](https://github.com/HKUDS/nanobot) personal AI assistant, it provides two core capabilities: **GUI phone control** and **GUI model evaluation**. Users can remotely control their phones via natural language on chat platforms like Feishu, QQ, and Telegram, or launch [opengui-eval](../opengui-eval) standardized evaluation pipelines with a single command. Under the hood, the framework leverages Vision-Language Models (VLMs) to understand screen content, plan and execute GUI actions (tap, swipe, type, etc.), forming a closed-loop "screenshot → reasoning → action" automation.
 
-## 📑 目录
+## 📑 Table of Contents
 
-- [核心特性](#-核心特性)
-- [架构](#-架构)
-- [快速开始](#-快速开始)
-- [运行](#-运行)
-- [OpenGUI-Eval 评测](#-opengui-eval-评测)
-- [GUI 手机操控能力](#-gui-手机操控能力)（Web UI / 记忆系统 / 支持的 GUI 模型）
-- [目录结构](#-目录结构)
-- [许可证](#-许可证)
+- [Key Features](#-key-features)
+- [Architecture](#-architecture)
+- [Quick Start](#-quick-start)
+- [Run](#-run)
+- [OpenGUI-Eval Evaluation](#-opengui-eval-evaluation)
+- [GUI Phone Control](#-gui-phone-control) (Web UI / Memory System / Supported GUI Models)
+- [Directory Structure](#-directory-structure)
+- [License](#-license)
 
-## ✨ 核心特性
+## ✨ Key Features
 
-💬 **nanobot 集成** — 通过飞书 / 钉钉 / Telegram / Discord / Slack / QQ 等 12+ 聊天平台远程控制手机，随时随地下发任务
+💬 **nanobot Integration** — Remotely control phones from 12+ chat platforms including Feishu / DingTalk / Telegram / Discord / Slack / QQ, issue tasks anytime anywhere
 
-📱 **OpenClaw-GUI 手机操控** — 基于 OpenClaw 能力，AI 自主截屏、理解屏幕、执行点击/滑动/输入等 GUI 操作，完成复杂任务
+📱 **OpenClaw-GUI Phone Control** — Powered by OpenClaw, AI autonomously captures screenshots, understands the screen, and performs tap/swipe/type GUI actions to complete complex tasks
 
-📊 **OpenGUI-Eval 评测集成** — 内置 [opengui-eval](../opengui-eval) 评测技能，用自然语言一句话即可启动 GUI Grounding 模型评测（环境检测 → 多 GPU 推理 → 判分 → 指标计算），自动监控进度并汇报结果与官方基线对比
+📊 **OpenGUI-Eval Evaluation Integration** — Built-in [opengui-eval](../opengui-eval) evaluation skill, launch GUI Grounding model benchmarks with natural language (environment check → multi-GPU inference → judging → metric calculation), with automatic progress monitoring and result comparison against official baselines
 
-🧠 **多模型适配** — 支持 AutoGLM、Qwen VL、UI-TARS、MAI-UI、GUI-Owl 等多种 VLM，通过 OpenAI 兼容 API 接入
+🧠 **Multi-Model Support** — Compatible with AutoGLM, Qwen VL, UI-TARS, MAI-UI, GUI-Owl and more VLMs, connected via OpenAI-compatible API
 
-💾 **个性化记忆** — 自动学习用户偏好（联系人、常用 App、习惯），基于向量搜索的持久化记忆系统
+💾 **Personalized Memory** — Automatically learns user preferences (contacts, frequently used apps, habits), with a vector-search-based persistent memory system
 
-📝 **Episode 实时记录** — 每次任务执行过程（截图 + 模型输出 + 动作）以结构化 episode 形式保存，便于回放与数据集构建
+📝 **Real-time Episode Recording** — Each task execution (screenshots + model outputs + actions) is saved as a structured episode, enabling replay and dataset construction
 
-🖥️ **Web UI** — 提供 Gradio Web 界面，支持设备管理、任务执行可视化、手动接管、记忆管理等
+🖥️ **Web UI** — Gradio-based web interface for device management, task execution visualization, manual takeover, memory management and more
 
-## 🏗️ 架构
+## 🏗️ Architecture
 
 <p align="center">
   <img src="assets/openclaw-gui-logo.png" alt="OpenClaw-GUI Architecture" width="800">
 </p>
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 环境要求
+### Requirements
 
-- **Python**：≥ 3.11
-- **包管理器**：推荐 [uv](https://github.com/astral-sh/uv)，也支持 conda + pip
+- **Python**: ≥ 3.11
+- **Package Manager**: [uv](https://github.com/astral-sh/uv) (recommended) or conda + pip
 
-### 1. 安装
+### 1. Installation
 
-假设你已经 clone 了 OpenGUI 项目并处于根目录：
+Assuming you have cloned the OpenGUI project and are in the root directory:
 
-#### 方式一：uv（推荐）
+#### Option A: uv (recommended)
 
 ```bash
 cd openclaw-gui
 
-# 创建虚拟环境
+# Create virtual environment
 uv venv .venv --python 3.12
 
-# 激活虚拟环境
+# Activate
 source .venv/bin/activate
 
-# 安装 phone_agent
+# Install phone_agent
 uv pip install -e .
 
-# 安装 nanobot
+# Install nanobot
 uv pip install -e nanobot/
 ```
 
-#### 方式二：conda + pip
+#### Option B: conda + pip
 
 ```bash
 cd openclaw-gui
 
-# 创建 conda 环境
+# Create conda environment
 conda create -n opengui python=3.12 -y
 conda activate opengui
 
-# 安装 phone_agent
+# Install phone_agent
 pip install -e .
 
-# 安装 nanobot
+# Install nanobot
 pip install -e nanobot/
 ```
 
-### 2. 初始化并编辑配置
+### 2. Initialize and Edit Configuration
 
-运行 onboard 向导生成默认配置：
+Run the onboard wizard to generate default config:
 
 ```bash
 nanobot onboard
 ```
 
-然后编辑 `~/.nanobot/config.json`，以下是一份参考配置：
+Then edit `~/.nanobot/config.json`. Here is a reference configuration:
 
 ```json
 {
@@ -134,7 +134,7 @@ nanobot onboard
       "guiBaseUrl": "https://openrouter.ai/api/v1",
       "guiApiKey": "YOUR_OPENROUTER_API_KEY",
       "guiModelName": "qwen/qwen3.5-35b-a3b",
-      "promptTemplateLang": "cn",
+      "promptTemplateLang": "en",
       "promptTemplateStyle": "autoglm",
       "traceEnabled": false,
       "traceDir": "gui_trace"
@@ -147,92 +147,87 @@ nanobot onboard
 }
 ```
 
-> **重要：`workspace` 路径设置**
+> **Important: `workspace` Path Setting**
 >
-> 请将 `workspace` 设置为 OpenGUI 项目的根目录（即包含 `openclaw-gui/` 和 `opengui-eval/` 的目录）。这样 nanobot 内置的评测技能（opengui-eval）才能正确定位评测框架。例如，如果你的项目在 `/home/user/OpenGUI`，则设置为 `"/home/user/OpenGUI"`。
->
+> Set `workspace` to the root directory of your OpenGUI project (the directory containing both `openclaw-gui/` and `opengui-eval/`). This allows the built-in evaluation skill (opengui-eval) to locate the evaluation framework correctly. For example, if your project is at `/home/user/OpenGUI`, set it to `"/home/user/OpenGUI"`.
 
+#### GUI Tool Parameters
 
-#### GUI 工具参数说明
+| Parameter | Description |
+|-----------|-------------|
+| `enable` | Enable/disable the GUI phone control tool |
+| `deviceType` | Device type: `adb` (Android) or `hdc` (HarmonyOS) |
+| `deviceId` | Specific device ID, `null` for auto-detection |
+| `maxSteps` | Maximum execution steps per task |
+| `useExternalModel` | Use an external GUI-specific model (recommended `true`) |
+| `guiBaseUrl` | API endpoint for the external GUI model |
+| `guiApiKey` | API key for the external GUI model |
+| `guiModelName` | External GUI model name, used with guiBaseUrl |
+| `promptTemplateLang` | Prompt language: `cn` / `en` |
+| `promptTemplateStyle` | Prompt template style: `autoglm` / `uitars` / `qwenvl` etc. |
+| `traceEnabled` | Enable episode recording |
+| `traceDir` | Episode save directory |
 
-| 参数 | 说明 |
-|------|------|
-| `enable` | 是否启用 GUI 手机控制工具 |
-| `deviceType` | 设备类型：`adb`（Android）或 `hdc`（鸿蒙） |
-| `deviceId` | 指定设备 ID，`null` 则自动检测 |
-| `maxSteps` | 单次任务最大执行步数 |
-| `useExternalModel` | 是否使用外部 GUI 专用模型（推荐 `true`） |
-| `guiBaseUrl` | 外部 GUI 模型的 API 地址 |
-| `guiApiKey` | 外部 GUI 模型的 API Key |
-| `guiModelName` | 外部 GUI 模型名称，搭配 guiBaseUrl 使用 |
-| `promptTemplateLang` | 提示词语言：`cn` / `en` |
-| `promptTemplateStyle` | 提示词风格：`autoglm` / `uitars` / `qwenvl` 等 |
-| `traceEnabled` | 是否开启 Episode 记录 |
-| `traceDir` | Episode 保存目录 |
+### 3. Connect Android Device
 
+> The controlled phone must be connected (e.g. via USB) to the server machine where OpenClaw-GUI is installed.
 
-### 3. 连接 Android 设备
+#### Step 1: Install ADB
 
-> 受控手机需要通过 USB/WIFI 等方式连接到安装了 OpenClaw-GUI 的服务端机器上。
-
-#### Step 1: 安装 ADB
-
-下载官方 [ADB platform-tools](https://developer.android.com/tools/releases/platform-tools) 并解压。
-
-**macOS（推荐 brew）：**
+**macOS (recommended: brew):**
 
 ```bash
 brew install android-platform-tools
 ```
 
-**Linux：**
+**Linux:**
 
 ```bash
 sudo apt install android-tools-adb   # Ubuntu/Debian
-# 或手动下载：https://developer.android.com/tools/releases/platform-tools
+# Or download manually: https://developer.android.com/tools/releases/platform-tools
 ```
 
-**Windows：** 请参考 [官方指南](https://developer.android.com/tools/releases/platform-tools) 下载并配置环境变量。
+**Windows:** See the [official guide](https://developer.android.com/tools/releases/platform-tools) to download and configure PATH.
 
-#### Step 2: 连接手机并开启 USB 调试
+#### Step 2: Connect Phone and Enable USB Debugging
 
-1. **开启开发者模式**：进入 设置 > 关于手机 > 版本号，连续快速点击约 10 次，直到看到"您已处于开发者模式"提示
-2. **开启 USB 调试**：进入 设置 > 开发者选项 > USB 调试，启用它（部分设备可能需要重启）
-3. **验证连接**：
+1. **Enable Developer Mode**: Go to Settings > About Phone > Build Number, tap rapidly ~10 times until you see "You are now a developer"
+2. **Enable USB Debugging**: Go to Settings > Developer Options > USB Debugging, toggle it on (some devices may require a restart)
+3. **Verify connection**:
 
 ```bash
 adb devices
 
-# 预期输出：
+# Expected output:
 # List of devices attached
 # <your_device_id>   device
 ```
 
-#### Step 3: 安装 ADB Keyboard（可选）
+#### Step 3: Install ADB Keyboard (optional)
 
-ADB Keyboard 用于文字输入。下载 [ADBKeyboard.apk](https://github.com/senzhk/ADBKeyBoard/blob/master/ADBKeyboard.apk) 并安装到设备：
+ADB Keyboard is used for text input. Download [ADBKeyboard.apk](https://github.com/senzhk/ADBKeyBoard/blob/master/ADBKeyboard.apk) and install:
 
 ```bash
 adb install ADBKeyboard.apk
 adb shell ime enable com.android.adbkeyboard/.AdbIME
 ```
 
-> 注意：此步骤为可选，框架会在需要时自动检测并提示安装。
+> Note: This step is optional. The framework will auto-detect and prompt installation when needed.
 
-#### 其他平台（鸿蒙 / iOS）
+#### Other Platforms (HarmonyOS / iOS)
 
-请参考 [Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM) 的设备连接指南。
+See the [Open-AutoGLM](https://github.com/zai-org/Open-AutoGLM) device connection guide.
 
-### 4. 配置聊天平台（可选）
+### 4. Configure Chat Platforms (optional)
 
-如需通过聊天平台远程控制手机，在 `config.json` 的 `channels` 中启用对应平台并填写凭证。以下是飞书和 QQ 的配置示例：
+To remotely control the phone via chat platforms, enable the corresponding platform in `channels` within `config.json` and fill in credentials.
 
-#### 飞书（Feishu / Lark）
+#### Feishu / Lark
 
-1. 前往 [飞书开放平台](https://open.feishu.cn/) 开发者后台创建企业自建应用
-2. 获取 `App ID` 和 `App Secret`
-3. 在应用中添加"机器人"能力，根据需求配置好机器人
-4. 最后在 `~/.nanobot/config.json` 中配置：
+1. Go to [Feishu Open Platform](https://open.feishu.cn/) and create an enterprise app
+2. Obtain the `App ID` and `App Secret`
+3. Add the "Bot" capability to the app and configure as needed
+4. Configure in `~/.nanobot/config.json`:
 
 ```json
 "feishu": {
@@ -246,13 +241,13 @@ adb shell ime enable com.android.adbkeyboard/.AdbIME
 }
 ```
 
-> `allowFrom` 设为 `["*"]` 表示允许所有用户。如需限制，填入用户的 Open ID 列表。`groupPolicy` 设为 `"mention"` 表示在群聊中需 @机器人 才会响应。
+> `allowFrom` set to `["*"]` allows all users. To restrict, provide a list of user Open IDs. `groupPolicy` set to `"mention"` means the bot only responds when @mentioned in groups.
 
 #### QQ
 
-1. 前往 [QQ 开放平台](https://q.qq.com/) 注册并创建机器人应用
-2. 获取 `App ID` 和 `Secret`
-3. 在 `~/.nanobot/config.json` 中配置：
+1. Go to [QQ Open Platform](https://q.qq.com/) and create a bot application
+2. Obtain the `App ID` and `Secret`
+3. Configure in `~/.nanobot/config.json`:
 
 ```json
 "qq": {
@@ -263,63 +258,63 @@ adb shell ime enable com.android.adbkeyboard/.AdbIME
 }
 ```
 
-#### 其他平台
+#### Other Platforms
 
-nanobot 还支持 Telegram、Discord、Slack、钉钉、企业微信、WhatsApp、Email 等 12+ 平台。在 `config.json` 的 `channels` 对应字段中设置 `"enabled": true` 并填写凭证即可。
+nanobot also supports Telegram, Discord, Slack, DingTalk, WeCom, WhatsApp, Email and 12+ more platforms. Set `"enabled": true` in the corresponding `channels` field and fill in credentials.
 
-## 🚀 运行
+## 🚀 Run
 
-### 通过 nanobot 聊天控制手机
+### Control Phone via nanobot Chat
 
-启动 nanobot gateway 服务：
+Start the nanobot gateway service:
 
 ```bash
 nanobot gateway
 ```
 
-启动后，即可在已配置的聊天平台（如飞书）中发送消息来操控手机，例如：
+Once started, you can send messages on configured chat platforms (e.g. Feishu) to control the phone:
 
 ```
-帮我打开微信给张三发消息说我晚点到
+Open WeChat and send "I'll be late" to Zhang San
 ```
 
-nanobot 会调用 `gui_execute` 工具，自动截屏 → VLM 推理 → 执行手机操作，循环直到任务完成。
+nanobot will invoke the `gui_execute` tool, automatically capturing screenshots → VLM reasoning → executing phone actions in a loop until the task is completed.
 
-## 📊 OpenGUI-Eval 评测
+## 📊 OpenGUI-Eval Evaluation
 
-OpenClaw-GUI 内置了 [opengui-eval](../opengui-eval) 评测技能，可以用自然语言指令驱动 GUI Grounding 模型的标准化评测。
+OpenClaw-GUI has a built-in [opengui-eval](../opengui-eval) evaluation skill that drives standardized GUI Grounding model evaluation via natural language.
 
-### 前置条件
+### Prerequisites
 
-1. **workspace 已正确设置**：`config.json` 中的 `workspace` 指向 OpenGUI 根目录（见上方配置说明）
-2. **opengui-eval 环境已安装**：参考 [opengui-eval README](../opengui-eval/README_zh.md) 完成安装和数据下载
-3. **GPU 可用**：推理需要 NVIDIA GPU
-4. **（推荐）安装 FlashAttention-2**：`pip install flash-attn --no-build-isolation`，未安装时框架会自动降级为 SDPA，但精度可能略有下降
+1. **workspace correctly set**: `workspace` in `config.json` points to the OpenGUI root directory (see configuration above)
+2. **opengui-eval environment installed**: Follow [opengui-eval README](../opengui-eval/README.md) to install and download data
+3. **GPU available**: Inference requires NVIDIA GPUs
+4. **(Recommended) Install FlashAttention-2**: `pip install flash-attn --no-build-isolation` — the framework falls back to SDPA automatically if not installed, but precision may be slightly lower
 
-### 使用方式
+### Usage
 
-在 nanobot 对话中直接说即可，例如：
-
-```
-帮我测一下 qwen3vl 2b 模型在 screenspot-pro 上的指标
-```
+Simply say it in a nanobot conversation:
 
 ```
-用 MAI-UI-8B 跑一下 uivision 和 osworld-g 的评测
+Benchmark qwen3vl 2b model on screenspot-pro
 ```
 
-nanobot 会自动完成以下流程：
+```
+Run uivision and osworld-g evaluation with MAI-UI-8B
+```
 
-1. **环境检测** — 检查 GPU、CUDA、FlashAttention-2、数据完整性
-2. **推理** — 基于模板脚本生成运行脚本，后台启动多 GPU 并行推理，实时监控进度
-3. **判分** — 自动选择对应的 judge 脚本执行
-4. **指标计算** — 自动选择对应的 metric 脚本执行
-5. **结果汇报** — 展示准确率、分项指标，并与官方基线对比
+nanobot will automatically:
 
-### 支持的评测模型
+1. **Environment Check** — Check GPU, CUDA, FlashAttention-2, data integrity
+2. **Inference** — Generate run scripts from templates, launch multi-GPU parallel inference in background, monitor progress in real-time
+3. **Judging** — Automatically select and run the corresponding judge script
+4. **Metric Calculation** — Automatically select and run the corresponding metric script
+5. **Result Report** — Present accuracy, sub-category breakdowns, and comparison against official baselines
 
-| 模型类型 | 示例 HuggingFace ID |
-|---------|-------------------|
+### Supported Evaluation Models
+
+| Model Type | Example HuggingFace ID |
+|------------|----------------------|
 | `qwen3vl` | Qwen/Qwen3-VL-2B/4B/8B-Instruct |
 | `qwen25vl` | Qwen/Qwen2.5-VL-3B/7B-Instruct |
 | `maiui` | Tongyi-MAI/MAI-UI-2B/8B |
@@ -330,86 +325,86 @@ nanobot 会自动完成以下流程：
 | `stepgui` | stepfun-ai/GELab-Zero-4B-preview |
 | `uivenus` | inclusionAI/UI-Venus-Ground-7B |
 
-支持的 Benchmark：ScreenSpot-Pro、ScreenSpot-V2、UIVision、MMBench-GUI、OSWorld-G、AndroidControl
+Supported Benchmarks: ScreenSpot-Pro, ScreenSpot-V2, UIVision, MMBench-GUI, OSWorld-G, AndroidControl
 
 ---
 
-## 📱 GUI 手机操控能力
+## 📱 GUI Phone Control
 
-以下功能均属于 OpenClaw-GUI 的手机/设备操控能力，通过 `gui_execute` 工具驱动。
+The following features are part of OpenClaw-GUI's phone/device control capabilities, driven by the `gui_execute` tool.
 
 ### Web UI
 
-除了通过聊天平台控制，还可以使用 Web UI 直接操控：
+In addition to chat platform control, you can use the Web UI directly:
 
 ```bash
 python webui.py
 ```
 
-默认在 `http://localhost:7860` 打开，支持：
+Opens at `http://localhost:7860` by default, featuring:
 
-- **设备管理**：连接/断开设备、查看设备状态
-- **任务执行**：输入任务描述，实时查看截图和 AI 思考过程
-- **手动接管**：遇到验证码等场景可切换手动操作
-- **记忆管理**：查看/编辑/清除记忆数据
-- **配置面板**：图形化设置模型参数
+- **Device Management**: Connect/disconnect devices, view device status
+- **Task Execution**: Enter task descriptions, watch screenshots and AI reasoning in real-time
+- **Manual Takeover**: Switch to manual control for scenarios like CAPTCHAs
+- **Memory Management**: View/edit/clear memory data
+- **Configuration Panel**: Graphical model parameter settings
 
-### 记忆系统
+### Memory System
 
-框架内置个性化记忆系统，在每次任务完成后自动从对话中提取有价值的信息（联系人、App 偏好、用户习惯等），以 JSON + numpy 向量嵌入的形式持久化存储。下次执行相似任务时，相关记忆会自动注入上下文，实现更智能的个性化操作。支持多用户隔离。
+The framework includes a built-in personalized memory system that automatically extracts valuable information from conversations after each task (contacts, app preferences, user habits), stored persistently as JSON + numpy vector embeddings. On subsequent similar tasks, relevant memories are automatically injected into context for smarter personalized operations. Multi-user isolation is supported.
 
-### 支持的 GUI 模型
+### Supported GUI Models
 
-框架通过适配器模式支持多种视觉语言模型：
+The framework supports multiple Vision-Language Models via an adapter pattern:
 
-| 模型 | `promptTemplateStyle` | 来源 |
-|------|----------------------|------|
-| **AutoGLM-Phone-9B** | `autoglm` | 智谱 AI |
-| **Doubao-1.5-UI-TARS** | `uitars` | 字节跳动 |
-| **Qwen2.5-VL / Qwen3-VL** | `qwenvl` | 阿里云通义 |
-| **MAI-UI** | `maiui` | 阿里云 |
+| Model | `promptTemplateStyle` | Provider |
+|-------|----------------------|----------|
+| **AutoGLM-Phone-9B** | `autoglm` | Zhipu AI |
+| **Doubao-1.5-UI-TARS** | `uitars` | ByteDance |
+| **Qwen2.5-VL / Qwen3-VL** | `qwenvl` | Alibaba Cloud |
+| **MAI-UI** | `maiui` | Alibaba Cloud |
 | **GUI-Owl-7B/32B** | `guiowl` | mPLUG |
 
-所有模型均通过 **OpenAI 兼容 API** 接入，可使用本地 vLLM / SGLang 部署，也可对接智谱 BigModel、阿里云百炼、OpenRouter 等云端服务。
+All models are connected via **OpenAI-compatible API** and can be deployed locally with vLLM / SGLang, or connected to cloud services such as Zhipu BigModel, Alibaba Cloud Bailian, or OpenRouter.
 
 ---
 
-## 📁 目录结构
+## 📁 Directory Structure
 
 ```
 OpenClaw-GUI/
-├── main.py                      # CLI 命令行入口
-├── webui.py                     # Gradio Web UI 入口
-├── ios.py                       # iOS 专用 CLI 入口
-├── setup.py                     # 包安装配置
-├── requirements.txt             # Python 依赖
+├── main.py                      # CLI entry point
+├── webui.py                     # Gradio Web UI entry point
+├── ios.py                       # iOS CLI entry point
+├── setup.py                     # Package setup
+├── requirements.txt             # Python dependencies
 │
-├── phone_agent/                 # 核心手机自动化包
-│   ├── agent.py                 # PhoneAgent 主类
-│   ├── agent_ios.py             # IOSPhoneAgent 类
-│   ├── device_factory.py        # 设备类型工厂
-│   ├── tracer.py                # Episode 执行追踪器
-│   ├── config/                  # 配置与提示词
-│   ├── model/                   # 模型客户端与适配器
-│   ├── adb/                     # Android ADB 设备控制
-│   ├── hdc/                     # 鸿蒙 HDC 设备控制
-│   ├── xctest/                  # iOS XCTest 设备控制
-│   ├── actions/                 # 动作处理器
-│   └── memory/                  # 个性化记忆系统
+├── phone_agent/                 # Core phone automation package
+│   ├── agent.py                 # PhoneAgent main class
+│   ├── agent_ios.py             # IOSPhoneAgent class
+│   ├── device_factory.py        # Device type factory
+│   ├── tracer.py                # Episode execution tracer
+│   ├── config/                  # Configuration & prompts
+│   ├── model/                   # Model clients & adapters
+│   ├── adb/                     # Android ADB device control
+│   ├── hdc/                     # HarmonyOS HDC device control
+│   ├── xctest/                  # iOS XCTest device control
+│   ├── actions/                 # Action handlers
+│   └── memory/                  # Personalized memory system
 │
-├── nanobot/                     # nanobot 子项目
-│   ├── nanobot/                 # nanobot 核心包
-│   │   ├── agent/               # 智能体核心 + GUI 工具
-│   │   ├── channels/            # 12+ 聊天平台集成
-│   │   ├── providers/           # 20+ LLM 提供商适配
-│   │   └── skills/              # 可插拔技能（含 gui-mobile、opengui-eval）
+├── nanobot/                     # nanobot subproject
+│   ├── nanobot/                 # nanobot core package
+│   │   ├── agent/               # Agent core + GUI tool
+│   │   ├── channels/            # 12+ chat platform integrations
+│   │   ├── providers/           # 20+ LLM provider adapters
+│   │   └── skills/              # Pluggable skills (gui-mobile, opengui-eval)
 │   ├── pyproject.toml
 │   └── README.md
 │
-├── examples/                    # 使用示例
-└── scripts/                     # 部署验证脚本
+├── examples/                    # Usage examples
+└── scripts/                     # Deployment & verification scripts
 ```
 
-## 📄 许可证
+## 📄 License
 
-本项目采用 [Apache License 2.0](LICENSE) 许可证。nanobot 子项目采用 [MIT License](nanobot/LICENSE)。
+This project is licensed under the [Apache License 2.0](LICENSE). The nanobot subproject is licensed under the [MIT License](nanobot/LICENSE).
