@@ -1,8 +1,7 @@
 <div align="center">
 
-<img src="assets/OpenGUI-Logo.png" height="100" alt="OpenGUI Logo">
-
-# OpenGUI：统一 GUI 智能体 Harness 系统
+<img src="assets/OpenGUI-Logo.png" height="140" alt="OpenGUI Logo">
+<h1>OpenGUI：统一 GUI 智能体 Harness 系统</h1>
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
