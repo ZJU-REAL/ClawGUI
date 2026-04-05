@@ -1,5 +1,13 @@
 <div align="center">
-  <h1>OpenClaw-GUI: Personal Phone GUI Assistant</h1>
+  <img src="assets/openclaw-gui-text.png" alt="OpenClaw-GUI Text" height="40">
+</div>
+<div align="center">
+  <table style="border: none; border-collapse: collapse;">
+    <tr>
+      <td style="border: none; padding: 0;"><img src="assets/openclaw-gui-banner.png" alt="OpenClaw-GUI Banner" height="60" style="vertical-align: middle;"></td>
+      <td style="border: none; padding: 0 0 0 12px; vertical-align: middle;"><h1 style="margin: 0;">OpenClaw-GUI: Personal Phone GUI Assistant</h1></td>
+    </tr>
+  </table>
   <p>
     <img src="https://img.shields.io/badge/python-≥3.10-blue" alt="Python">
     <img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="License">
