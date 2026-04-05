@@ -237,9 +237,21 @@ adb shell ime enable com.android.adbkeyboard/.AdbIME
 
 #### 飞书（Feishu / Lark）
 
-1. 前往 [飞书开放平台](https://open.feishu.cn/) 开发者后台创建企业自建应用
-2. 获取 `App ID` 和 `App Secret`
-3. 在应用中添加"机器人"能力，根据需求配置好机器人
+<details>
+<summary>📖 点击展开详细步骤</summary>
+
+- **Step 1**：打开 [飞书开放平台](https://open.feishu.cn/)，在首页点击**创建应用**，选择**企业自建应用**，填入应用名称和应用描述，并启用**机器人**功能。
+- **Step 2**：点击左侧的**权限管理**，点击**开通权限**。
+- **Step 3**：在文本框搜索并开通以下权限：`im:message`、`im:message.p2p_msg:readonly`、`cardkit:card:write`
+  > 如果无法添加 `cardkit:card:write`，请在下方配置的 `channels.feishu` 中设置 `"streaming": false`。机器人仍可正常工作；回复使用普通的交互式卡片，无需逐个令牌流式传输。
+- **Step 4**：点击左侧的**事件与回调**，点击**订阅方式**，选择**长时间接受事件**（需要运行 openclaw-gui 建立连接）。
+- **Step 5**：从左侧的**凭证和基础信息**找到 `App ID` 和 `App Secret`，拿到密钥。
+- **Step 6**：点击**发布应用**。
+- **Step 7**：打开飞书，随便进入一个群里，点击群聊的设置，点击**群机器人**，点击**添加机器人**，将刚刚创建的机器人加入群聊。
+- **Step 8**：@机器人发送消息。
+
+</details>
+
 4. 最后在 `~/.nanobot/config.json` 中配置：
 
 ```json

@@ -232,9 +232,21 @@ To remotely control the phone via chat platforms, enable the corresponding platf
 
 #### Feishu / Lark
 
-1. Go to [Feishu Open Platform](https://open.feishu.cn/) and create an enterprise app
-2. Obtain the `App ID` and `App Secret`
-3. Add the "Bot" capability to the app and configure as needed
+<details>
+<summary>📖 Click to expand setup steps</summary>
+
+- **Step 1**: Go to [Feishu Open Platform](https://open.feishu.cn/), click **Create App** on the homepage, select **Enterprise Self-Built App**, fill in the app name and description, and enable the **Bot** capability.
+- **Step 2**: Click **Permission Management** on the left sidebar, then click **Enable Permissions**.
+- **Step 3**: Search for and enable the following permissions in the text box: `im:message`, `im:message.p2p_msg:readonly`, `cardkit:card:write`
+  > If `cardkit:card:write` cannot be added, set `"streaming": false` in `channels.feishu` (see config below). The bot will still work normally; replies use regular interactive cards without token-by-token streaming.
+- **Step 4**: Click **Event & Callback** on the left, click **Subscription Method**, and select **Persistent Event Reception** (requires openclaw-gui to be running to establish the connection).
+- **Step 5**: Go to **Credentials & Basic Info** on the left to get your `App ID` and `App Secret`.
+- **Step 6**: Click **Publish App**.
+- **Step 7**: Open Feishu, go to any group, click the group settings, click **Group Bots**, then **Add Bot**, and add the bot you just created to the group.
+- **Step 8**: @mention the bot in the group and send a message.
+
+</details>
+
 4. Configure in `~/.nanobot/config.json`:
 
 ```json
