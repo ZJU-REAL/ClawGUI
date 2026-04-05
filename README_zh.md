@@ -1,5 +1,3 @@
-<div align="center">
-
 <img src="assets/OpenGUI-Logo.png" height="60" alt="OpenGUI Logo" align="left">
 
 # OpenGUI：统一 GUI 智能体 Harness 系统
@@ -11,8 +9,6 @@
 [![ModelScope Model](https://img.shields.io/badge/🤖%20ModelScope-OpenGUI--2B-purple.svg)](https://modelscope.cn/)
 
 [English](README.md) | [中文](README_zh.md)
-
-</div>
 
 ---
 
