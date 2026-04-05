@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>OpenClaw-GUI: GUI Agent Framework Based on OpenClaw</h1>
+  <h1>OpenClaw-GUI: Personal Phone GUI Assistant</h1>
   <p>
     <img src="https://img.shields.io/badge/python-≥3.10-blue" alt="Python">
     <img src="https://img.shields.io/badge/license-Apache%202.0-green" alt="License">
