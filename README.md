@@ -16,21 +16,22 @@
 ---
 
 <div align="center">
+<b>Your Next-Generation AI Assistant</b>
 <table>
 <tr>
 <td align="center">
 <video src="https://github.com/user-attachments/assets/6481f7ba-58f2-4f4b-9e97-e81b7b64a027" controls width="320"></video>
-<br><b>OpenClaw-GUI Demo 1</b>
+<br><b>OpenClaw-GUI Researches and Summarizes a Singer's Controversy</b>
 </td>
 <td align="center">
 <video src="https://github.com/user-attachments/assets/5fbf2064-52d5-47a3-9fca-f1ecf28e08f8" controls width="320"></video>
-<br><b>OpenClaw-GUI Demo 2</b>
+<br><b>OpenClaw-GUI Helps Users Troubleshoot Network Issues</b>
 </td>
 </tr>
 <tr>
 <td align="center" colspan="2">
 <video src="https://github.com/user-attachments/assets/277db5ce-717a-4df4-ae6b-b4697298aaaa" controls width="320"></video>
-<br><b>OpenGUI-Eval Demo</b>
+<br><b>OpenClaw-GUI Urgently Assists Users with Evaluation Tasks</b>
 </td>
 </tr>
 </table>
@@ -47,16 +48,6 @@
   - [OpenGUI-RL — Online RL Training](#-opengui-rl--online-rl-training)
   - [OpenGUI-Eval — Evaluation](#-opengui-eval--evaluation)
 - [Acknowledgements](#-acknowledgements)
-
----
-
-## 🎬 Demo: Natural Language-Driven GUI Evaluation
-
-<div align="center">
-
-<video src="assets/opengui-eval-demo.mp4" width="85%" controls></video>
-
-</div>
 
 ---
 

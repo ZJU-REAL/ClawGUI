@@ -16,21 +16,22 @@
 ---
 
 <div align="center">
+<b>你的下一代AI助手</b>
 <table>
 <tr>
 <td align="center">
 <video src="https://github.com/user-attachments/assets/6481f7ba-58f2-4f4b-9e97-e81b7b64a027" controls width="320"></video>
-<br><b>OpenClaw-GUI 演示 1</b>
+<br><b>OpenClaw-GUI 搜集信息总结歌手纷争</b>
 </td>
 <td align="center">
 <video src="https://github.com/user-attachments/assets/5fbf2064-52d5-47a3-9fca-f1ecf28e08f8" controls width="320"></video>
-<br><b>OpenClaw-GUI 演示 2</b>
+<br><b>OpenClaw-GUI 帮助用户解决网络问题</b>
 </td>
 </tr>
 <tr>
 <td align="center" colspan="2">
 <video src="https://github.com/user-attachments/assets/277db5ce-717a-4df4-ae6b-b4697298aaaa" controls width="320"></video>
-<br><b>OpenGUI-Eval 演示</b>
+<br><b>OpenClaw-GUI 帮助用户解决评测的燃眉之急</b>
 </td>
 </tr>
 </table>
@@ -47,16 +48,6 @@
   - [OpenGUI-RL — Online RL 训练](#-opengui-rl--online-rl-训练)
   - [OpenGUI-Eval — 评测](#-opengui-eval--评测)
 - [致谢](#-致谢)
-
----
-
-## 🎬 演示：自然语言驱动的 GUI 测评
-
-<div align="center">
-
-<video src="assets/opengui-eval-demo.mp4" width="85%" controls></video>
-
-</div>
 
 ---
 
