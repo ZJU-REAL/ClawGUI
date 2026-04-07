@@ -53,7 +53,7 @@
 ## 🏗️ Architecture
 
 <div align="center">
-<img src="assets/opengui-eval.png" width="90%" alt="OpenGUI-Eval Architecture">
+<img src="assets/openclaw-eval.png" width="90%" alt="OpenGUI-Eval Architecture">
 </div>
 
 <div align="center">
