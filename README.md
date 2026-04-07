@@ -47,6 +47,7 @@
   - [OpenClaw-GUI — Agent Inference](#-openclaw-gui--agent-inference)
   - [OpenGUI-RL — Online RL Training](#-opengui-rl--online-rl-training)
   - [OpenGUI-Eval — Evaluation](#-opengui-eval--evaluation)
+- [Roadmap](#️-roadmap)
 - [Acknowledgements](#-acknowledgements)
 - [License](#-license)
 
@@ -61,7 +62,7 @@
 | 🤖 **[OpenClaw-GUI](openclaw-gui/)** | GUI agent framework — control mobile devices via natural language through 12+ chat platforms, and launch standardized GUI model evaluation with a single command |
 | 🚀 **[OpenGUI-RL](opengui-rl/)** | Scalable online RL training infrastructure — parallel multi-environment training, real-device support, GiGPO with PRM, robust spare-server rotation |
 | 📊 **[OpenGUI-Eval](opengui-eval/)** | Standardized GUI grounding evaluation suite — 6 benchmarks, 11+ models, 95%+ faithful reproduction of official results |
-| 🏆 **OpenGUI-2B** | State-of-the-art 2B GUI agent trained with GiGPO, achieving **17.1** MobileWorld SR |
+| 🏆 **OpenGUI-2B** | 2B GUI agent trained with OpenGUI-RL using GiGPO, achieving **17.1** MobileWorld SR — surpassing the baseline **11.1** by a large margin |
 
 ---
 
@@ -142,6 +143,17 @@ OpenGUI-Eval is a standardized GUI grounding evaluation framework with a three-s
 </div>
 
 → **[Get started with OpenGUI-Eval](opengui-eval/README.md)**
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] **On-device GUI-Claw** — Deploy OpenClaw-GUI directly on real phones to avoid cloud-based privacy leakage
+- [ ] **Desktop Online RL** — Extend OpenGUI-RL to desktop environments for online reinforcement learning
+- [ ] **Web Online RL** — Extend OpenGUI-RL to web environments for online reinforcement learning
+- [ ] **More Skills for OpenClaw-GUI** — Add more pluggable skills to expand OpenClaw-GUI's capabilities
+- [ ] **Hybrid CLI & GUI Mechanism** — Explore hybrid interaction combining command-line and GUI operations
+- [ ] **Real-time RL for OpenGUI-RL & OpenClaw-GUI** — Integrate real-time reinforcement learning based on the OPD algorithm
 
 ---
 
