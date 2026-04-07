@@ -40,6 +40,9 @@ wandb/
 venv/
 .nfs*
 
+# Docker
+clawgui-eval/.env
+
 # Data (暂不上传)
 clawgui-eval/MobileWorld/
 clawgui-rl/data/geometry3k/

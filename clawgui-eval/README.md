@@ -64,11 +64,53 @@
 
 ## 🔧 Installation
 
-```bash
-cd ClawGUI/clawgui-eval
-```
+### Option A: Docker (recommended for reproducibility)
+
+Docker eliminates dependency conflicts and makes it easy to share exact evaluation environments.
+
+**Prerequisites:** [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
 
 ```bash
+cd ClawGUI/clawgui-eval
+
+# Build the image (first build is slow due to flash-attn compilation)
+docker build -t clawgui-eval .
+```
+
+Then create a `.env` file to point at your data and model directories:
+
+```bash
+# .env
+DATA_DIR=/data/clawgui-eval/data
+IMAGE_DIR=/data/clawgui-eval/image
+OUTPUT_DIR=/data/clawgui-eval/output
+MODEL_DIR=/data/models           # HuggingFace model cache or local weights
+```
+
+Run any inference script inside the container:
+
+```bash
+# Inference
+docker compose run clawgui-eval \
+    bash scripts/infer/transformers/qwen3vl_run_transformers.sh
+
+# Judge
+docker compose run clawgui-eval \
+    bash scripts/judge/screenspot-pro_run_judge.sh
+
+# Metric
+docker compose run clawgui-eval \
+    bash scripts/metric/run_metric_screenspot_pro.sh
+```
+
+> **Note:** Edit `MODEL_PATH` inside the shell scripts to point to `/models/<your-model-dir>` (the container-side path of `MODEL_DIR`).
+
+---
+
+### Option B: Conda + pip
+
+```bash
+cd ClawGUI/clawgui-eval
 conda create -n opengui python=3.12 -y
 conda activate opengui
 pip install -r requirements.txt

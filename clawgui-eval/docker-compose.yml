@@ -1,0 +1,45 @@
+services:
+  clawgui-eval:
+    image: clawgui-eval
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # ----------------------------------------------------------------
+    # GPU access — requires NVIDIA Container Toolkit.
+    # https://docs.nvidia.com/datacenter/cloud-native/container-toolkit
+    # ----------------------------------------------------------------
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # ----------------------------------------------------------------
+    # Volume mounts
+    #
+    # data/ image/ output/ are downloaded from HuggingFace/ModelScope
+    # and must live on the host (they are too large to bake into the image).
+    #
+    # Set DATA_DIR, IMAGE_DIR, OUTPUT_DIR, and MODEL_DIR in a .env file
+    # or export them before running `docker compose up`.
+    #
+    # Example .env:
+    #   DATA_DIR=/data/clawgui-eval/data
+    #   IMAGE_DIR=/data/clawgui-eval/image
+    #   OUTPUT_DIR=/data/clawgui-eval/output
+    #   MODEL_DIR=/data/models
+    # ----------------------------------------------------------------
+    volumes:
+      - ${DATA_DIR:-./data}:/workspace/clawgui-eval/data
+      - ${IMAGE_DIR:-./image}:/workspace/clawgui-eval/image
+      - ${OUTPUT_DIR:-./output}:/workspace/clawgui-eval/output
+      - ${MODEL_DIR:-/tmp/models}:/models
+    # ----------------------------------------------------------------
+    # Override CMD to run a specific script, e.g.:
+    #   docker compose run clawgui-eval bash scripts/infer/transformers/qwen3vl_run_transformers.sh
+    # ----------------------------------------------------------------
+    working_dir: /workspace/clawgui-eval
+    ipc: host          # required for torch multiprocessing (spawn)
+    ulimits:
+      memlock: -1      # required for some GPU operations

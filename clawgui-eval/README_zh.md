@@ -64,11 +64,53 @@
 
 ## 🔧 安装
 
-```bash
-cd ClawGUI/clawgui-eval
-```
+### 方式一：Docker（推荐，便于复现）
+
+Docker 消除了依赖冲突，便于共享完全一致的评测环境。
+
+**前置要求：** [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
 
 ```bash
+cd ClawGUI/clawgui-eval
+
+# 构建镜像（首次构建因 flash-attn 编译较慢）
+docker build -t clawgui-eval .
+```
+
+创建 `.env` 文件指定数据和模型目录：
+
+```bash
+# .env
+DATA_DIR=/data/clawgui-eval/data
+IMAGE_DIR=/data/clawgui-eval/image
+OUTPUT_DIR=/data/clawgui-eval/output
+MODEL_DIR=/data/models           # HuggingFace 模型缓存或本地权重目录
+```
+
+在容器内运行推理脚本：
+
+```bash
+# 推理
+docker compose run clawgui-eval \
+    bash scripts/infer/transformers/qwen3vl_run_transformers.sh
+
+# 评判
+docker compose run clawgui-eval \
+    bash scripts/judge/screenspot-pro_run_judge.sh
+
+# 指标计算
+docker compose run clawgui-eval \
+    bash scripts/metric/run_metric_screenspot_pro.sh
+```
+
+> **注意：** 将 shell 脚本中的 `MODEL_PATH` 修改为 `/models/<你的模型目录>`（即容器内 `MODEL_DIR` 的挂载路径）。
+
+---
+
+### 方式二：Conda + pip
+
+```bash
+cd ClawGUI/clawgui-eval
 conda create -n opengui python=3.12 -y
 conda activate opengui
 pip install -r requirements.txt
