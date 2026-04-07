@@ -41,30 +41,30 @@ venv/
 .nfs*
 
 # Data (暂不上传)
-opengui-eval/MobileWorld/
-opengui-rl/data/geometry3k/
+clawgui-eval/MobileWorld/
+clawgui-rl/data/geometry3k/
 .codebuddy/
-opengui-eval/image.zip
-opengui-eval/data.zip
-opengui-eval/output.zip
-opengui-eval/data.tar.gz
-opengui-eval/skill.md
-opengui-eval/filter_seed_predictions.py
-opengui-eval/environment.yml
-opengui-eval/env_skill.md
-opengui-eval/output/*
-!opengui-eval/output/.gitkeep
-opengui-eval/image/*
-!opengui-eval/image/.gitkeep
-opengui-eval/data/*
-!opengui-eval/data/.gitkeep
-opengui-eval/scripts/infer/transformers/run_all_transformers_benchmarks.sh
-opengui-eval/scripts/judge/run_all_judge_and_metric.sh
-opengui-eval/plot_reproduction.py
+clawgui-eval/image.zip
+clawgui-eval/data.zip
+clawgui-eval/output.zip
+clawgui-eval/data.tar.gz
+clawgui-eval/skill.md
+clawgui-eval/filter_seed_predictions.py
+clawgui-eval/environment.yml
+clawgui-eval/env_skill.md
+clawgui-eval/output/*
+!clawgui-eval/output/.gitkeep
+clawgui-eval/image/*
+!clawgui-eval/image/.gitkeep
+clawgui-eval/data/*
+!clawgui-eval/data/.gitkeep
+clawgui-eval/scripts/infer/transformers/run_all_transformers_benchmarks.sh
+clawgui-eval/scripts/judge/run_all_judge_and_metric.sh
+clawgui-eval/plot_reproduction.py
 
-opengui-eval/scripts/generate_scripts/
+clawgui-eval/scripts/generate_scripts/
 
-opengui-rl/assets/gen_reward_curve.py
+clawgui-rl/assets/gen_reward_curve.py
 OpenGUI-Server
 
 # Nanobot workspace runtime files
@@ -78,5 +78,8 @@ cron/
 sessions/
 
 # Phone agent runtime data
-openclaw-gui/memory_db/
-openclaw-gui/demo_memory_db/
+clawgui-agent/memory_db/
+clawgui-agent/demo_memory_db/
+
+.claude
+CLAUDE.md

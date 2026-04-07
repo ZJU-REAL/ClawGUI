@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clawgui-eval"
+version = "0.1.0"
+description = "ClawGUI-Eval: GUI Evaluation Framework"
+readme = "README_zh.md"
+requires-python = "==3.12.*"
+license = { text = "Apache-2.0" }
+
+# -- Core dependencies (directly imported by project code) ---------
+dependencies = [
+    "torch>=2.8.0",
+    "transformers>=4.57.0",
+    "qwen-vl-utils>=0.0.14",
+    "openai>=2.9.0",
+    "pillow>=12.0.0",
+    "tqdm>=4.67.0",
+    "numpy>=2.2.0",
+    "accelerate>=1.12.0",
+]
+
+# -- Optional dependencies ----------------------------------------
+[project.optional-dependencies]
+# vllm deployment (used via `vllm serve` in shell scripts, not imported in Python)
+vllm = ["vllm>=0.11.0"]
+# flash-attn: required when transformers backend uses attn_implementation="flash_attention_2"
+flash-attn = ["flash-attn>=2.8.1"]
+dev = ["pytest>=7.0", "ruff>=0.4.0"]
+
+[tool.setuptools.packages.find]
+include = ["inference*", "judge*", "metric*"]
+
+# -- uv configuration ---------------------------------------------
+[tool.uv]
+no-build-isolation-package = ["flash-attn"]
