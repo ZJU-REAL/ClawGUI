@@ -48,6 +48,7 @@
   - [OpenGUI-RL — Online RL Training](#-opengui-rl--online-rl-training)
   - [OpenGUI-Eval — Evaluation](#-opengui-eval--evaluation)
 - [Acknowledgements](#-acknowledgements)
+- [License](#-license)
 
 ---
 

@@ -48,6 +48,7 @@
   - [OpenGUI-RL — Online RL 训练](#-opengui-rl--online-rl-训练)
   - [OpenGUI-Eval — 评测](#-opengui-eval--评测)
 - [致谢](#-致谢)
+- [许可证](#-许可证)
 
 ---
 
