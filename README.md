@@ -43,7 +43,11 @@
 
 ---
 
-## 📚 Table of Contents
+## News
+
++ [2026/4/8] We released OpenGUI, including three modules: OpenClaw-GUI for agent inference and evaluation, OpenGUI-RL for online RL training, and OpenGUI-Eval for standardized evaluation. We also open-sourced OpenGUI-2B, a 2B GUI agent trained with OpenGUI-RL using GiGPO, achieving 17.1 MobileWorld SR — surpassing the baseline 11.1 by a large margin. Check out the [Quick Start](#-quick-start) section to get started!
+
+## Table of Contents
 
 - [Overview](#-overview)
 - [Architecture](#️-architecture)
@@ -57,7 +61,7 @@
 
 ---
 
-## 📖 Overview
+## 💡 Overview
 
 **OpenGUI** is a full-stack, end-to-end agent harness system for GUI intelligence. It covers the complete lifecycle of a GUI agent — from **inference and deployment**, through **standardized evaluation**, to **online reinforcement learning training** — providing researchers and engineers with a unified, production-ready infrastructure.
 
@@ -95,12 +99,12 @@ The OpenGUI system is organized into three tightly integrated modules. Click int
 
 OpenClaw-GUI is a GUI agent framework built on OpenClaw, providing two core capabilities: **GUI phone control** and **GUI model evaluation**. Control mobile devices with natural language through 12+ chat platforms, or launch standardized opengui-eval benchmarks with a single command.
 
-- 📱 **Cross-platform** — Android (ADB), HarmonyOS (HDC), iOS (XCTest)
-- 🤖 **Multi-model** — AutoGLM, MAI-UI, GUI-Owl, Qwen-VL, UI-TARS via OpenAI-compatible API
-- 📊 **One-command evaluation** — Built-in opengui-eval skill: say "benchmark qwen3vl on screenspot-pro" and it handles env check → multi-GPU inference → judging → metrics → result comparison
-- 🧠 **Personalized memory** — Automatically learns user preferences and injects context across tasks
-- 📝 **Episode recording** — Every task saved as structured episodes for replay and dataset building
-- 🖥️ **Web UI** — Gradio interface for device management, task execution, and memory inspection
+- **Cross-platform** — Android (ADB), HarmonyOS (HDC), iOS (XCTest)
+- **Multi-model** — AutoGLM, MAI-UI, GUI-Owl, Qwen-VL, UI-TARS via OpenAI-compatible API
+- **One-command evaluation** — Built-in opengui-eval skill: say "benchmark qwen3vl on screenspot-pro" and it handles env check → multi-GPU inference → judging → metrics → result comparison
+- **Personalized memory** — Automatically learns user preferences and injects context across tasks
+- **Episode recording** — Every task saved as structured episodes for replay and dataset building
+- **Web UI** — Gradio interface for device management, task execution, and memory inspection
 
 <div align="center">
 <img src="openclaw-gui/assets/openclaw-gui-logo.png" width="85%" alt="OpenClaw-GUI">
@@ -116,11 +120,11 @@ OpenClaw-GUI is a GUI agent framework built on OpenClaw, providing two core capa
 
 OpenGUI-RL is a scalable online RL infrastructure for GUI agent training, supporting both virtual environment scaling and real-device training.
 
-- 🌐 **Parallel multi-environment** — Dozens of Docker-based virtual Android environments simultaneously
-- 📱 **Real-device training** — Physical or cloud Android phones
-- 🏆 **GiGPO + PRM** — Fine-grained step-level reward for better policy optimization than standard GRPO
-- ♻️ **Spare server rotation** — Automatic failover keeps training running without interruption
-- 🎬 **Episode visualization** — Record and replay any training trajectory
+- **Parallel multi-environment** — Dozens of Docker-based virtual Android environments simultaneously
+- **Real-device training** — Physical or cloud Android phones
+- **GiGPO + PRM** — Fine-grained step-level reward for better policy optimization than standard GRPO
+- **Spare server rotation** — Automatic failover keeps training running without interruption
+- **Episode visualization** — Record and replay any training trajectory
 
 <div align="center">
 <img src="opengui-rl/assets/opengui-rl-framework.png" width="80%" alt="OpenGUI-RL Architecture">
@@ -136,11 +140,11 @@ OpenGUI-RL is a scalable online RL infrastructure for GUI agent training, suppor
 
 OpenGUI-Eval is a standardized GUI grounding evaluation framework with a three-stage **Infer → Judge → Metric** pipeline and a **95.8%** reproduction rate against official results.
 
-- 📊 **6 benchmarks** — ScreenSpot-Pro, ScreenSpot-V2, UIVision, MMBench-GUI, OSWorld-G, AndroidControl
-- 🤖 **11+ models** — Qwen3-VL, Qwen2.5-VL, UI-TARS, MAI-UI, GUI-G2, UI-Venus, Gemini, Seed 1.8, and more
-- 🔌 **Dual backend** — Local GPU (`transformers`) or remote API (OpenAI-compatible)
-- ⚡ **Multi-GPU & multi-thread** — Parallel inference with automatic resume
-- 🤖 **OpenClaw-GUI integration** — Pair with OpenClaw-GUI to run the full pipeline via natural language
+- **6 benchmarks** — ScreenSpot-Pro, ScreenSpot-V2, UIVision, MMBench-GUI, OSWorld-G, AndroidControl
+- **11+ models** — Qwen3-VL, Qwen2.5-VL, UI-TARS, MAI-UI, GUI-G2, UI-Venus, Gemini, Seed 1.8, and more
+- **Dual backend** — Local GPU (`transformers`) or remote API (OpenAI-compatible)
+- **Multi-GPU & multi-thread** — Parallel inference with automatic resume
+- **OpenClaw-GUI integration** — Pair with OpenClaw-GUI to run the full pipeline via natural language
 
 <div align="center">
 <img src="opengui-eval/assets/openclaw-eval.png" width="80%" alt="OpenGUI-Eval Architecture">
@@ -150,7 +154,7 @@ OpenGUI-Eval is a standardized GUI grounding evaluation framework with a three-s
 
 ---
 
-## 🗺️ Roadmap
+## 🎯 Roadmap
 
 - [x] **OpenClaw-GUI** — GUI agent framework for phone control and evaluation via natural language
 - [x] **OpenGUI-RL** — Scalable mobile online RL training infrastructure with GiGPO + PRM
@@ -165,7 +169,7 @@ OpenGUI-Eval is a standardized GUI grounding evaluation framework with a three-s
 
 ---
 
-## 🙏 Acknowledgements
+## Acknowledgements
 
 OpenGUI is built upon the following excellent open-source projects. We sincerely thank their contributors:
 
@@ -178,6 +182,6 @@ OpenGUI is built upon the following excellent open-source projects. We sincerely
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the [Apache License 2.0](LICENSE).
