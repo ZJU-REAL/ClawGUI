@@ -143,7 +143,7 @@ OpenGUI-Eval is a standardized GUI grounding evaluation framework with a three-s
 - 🤖 **OpenClaw-GUI integration** — Pair with OpenClaw-GUI to run the full pipeline via natural language
 
 <div align="center">
-<img src="opengui-eval/assets/opengui-eval.png" width="75%" alt="OpenGUI-Eval Architecture">
+<img src="opengui-eval/assets/openclaw-eval.png" width="75%" alt="OpenGUI-Eval Architecture">
 </div>
 
 → **[Get started with OpenGUI-Eval](opengui-eval/README.md)**
