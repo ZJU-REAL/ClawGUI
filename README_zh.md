@@ -43,7 +43,7 @@
 
 ## 新闻
 
-+ [2026/4/8] ClawGUI 正式发布——ClawGUI-RL（GiGPO）训练、ClawGUI-Eval 评测、ClawGUI-Agent 部署，三件套一次到位。基于该完整链路训练的 ClawGUI-2B 在 MobileWorld SR 上达到 **17.1**，大幅超越基线 **11.1**。查看 [快速开始](#-快速开始) 上手。
++ 🔥 **[2026/4/8]** ClawGUI 正式发布——ClawGUI-RL（GiGPO）训练、ClawGUI-Eval 评测、ClawGUI-Agent 部署，三件套一次到位。基于该完整链路训练的 ClawGUI-2B 在 MobileWorld SR 上达到 **17.1**，大幅超越基线 **11.1**。查看 [快速开始](#-快速开始) 上手。
 
 ## 目录
 
