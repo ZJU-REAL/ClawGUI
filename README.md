@@ -17,19 +17,15 @@
 
 <div align="center">
 <b>A unified research framework: train GUI agents with RL, measure them rigorously, deploy them on real devices.</b>
-<table>
-<tr>
-<td align="center">
-<video src="https://github.com/ZJU-REAL/ClawGUI-Page/releases/download/clawgui-video/clawgui-agent.mp4" controls width="320"></video>
-<br><b>ClawGUI-Agent controls a real phone via natural language</b>
-</td>
-<td align="center">
-<video src="https://github.com/ZJU-REAL/ClawGUI-Page/releases/download/clawgui-video/clawgui-rl.mp4" controls width="320"></video>
-<br><b>ClawGUI-RL trains a GUI agent with online reinforcement learning</b>
-</td>
-</tr>
-</table>
 </div>
+
+**ClawGUI-Agent controls a real phone via natural language**
+
+https://github.com/ZJU-REAL/ClawGUI-Page/releases/download/clawgui-video/clawgui-agent.mp4
+
+**ClawGUI-RL trains a GUI agent with online reinforcement learning**
+
+https://github.com/ZJU-REAL/ClawGUI-Page/releases/download/clawgui-video/clawgui-rl.mp4
 
 
 ## News
