@@ -17,15 +17,20 @@
 
 <div align="center">
 <b>一套完整的 GUI 智能体研究框架：用 RL 训练、严格评测、真机部署。</b>
+
+<table>
+<tr>
+<td align="center">
+<img src="https://github.com/ZJU-REAL/ClawGUI-Page/releases/download/clawgui-video/clawgui-agent.mp4" width="420">
+<br><b>ClawGUI-Agent 通过自然语言操控真实手机</b>
+</td>
+<td align="center">
+<img src="https://github.com/ZJU-REAL/ClawGUI-Page/releases/download/clawgui-video/clawgui-rl.mp4" width="420">
+<br><b>ClawGUI-RL 在线强化学习训练 GUI 智能体</b>
+</td>
+</tr>
+</table>
 </div>
-
-**ClawGUI-Agent 通过自然语言操控真实手机**
-
-https://github.com/ZJU-REAL/ClawGUI-Page/releases/download/clawgui-video/clawgui-agent.mp4
-
-**ClawGUI-RL 在线强化学习训练 GUI 智能体**
-
-https://github.com/ZJU-REAL/ClawGUI-Page/releases/download/clawgui-video/clawgui-rl.mp4
 
 
 ## 新闻
