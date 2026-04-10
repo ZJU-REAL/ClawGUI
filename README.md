@@ -8,6 +8,7 @@
 [![Stars](https://img.shields.io/github/stars/ZJU-REAL/ClawGUI?style=social)](https://github.com/ZJU-REAL/ClawGUI/stargazers)
 [![HuggingFace Model](https://img.shields.io/badge/🤗%20HuggingFace-ClawGUI--2B-yellow.svg)](https://huggingface.co/SugarVapeur/OpenGUI-2B)
 [![ModelScope Model](https://img.shields.io/badge/🤖%20ModelScope-ClawGUI--2B-purple.svg)](https://www.modelscope.cn/models/SugarFree/OpenGUI-2B)
+[![Project Page](https://img.shields.io/badge/🌐%20Project-Page-orange.svg)](https://zju-real.github.io/ClawGUI-Page/)
 
 [English](README.md) | [中文](README_zh.md)
 
