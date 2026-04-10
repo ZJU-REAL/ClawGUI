@@ -67,7 +67,7 @@ Building a capable GUI agent involves three tightly coupled problems that are ra
 ## 🏗️ Architecture
 
 <div align="center">
-<img src="assets/clawgui-framework.png" width="85%" alt="ClawGUI System Architecture">
+<img src="assets/clawgui-framework.png" width="95%" alt="ClawGUI System Architecture">
 </div>
 
 
@@ -94,7 +94,7 @@ ClawGUI-RL trains GUI agents with online reinforcement learning. It runs dozens 
 - **Episode visualization** — Record and replay any training trajectory
 
 <div align="center">
-<img src="clawgui-rl/assets/clawgui-rl-framework.png" width="80%" alt="ClawGUI-RL Architecture">
+<img src="clawgui-rl/assets/clawgui-rl-framework.png" width="95%" alt="ClawGUI-RL Architecture">
 </div>
 
 → **[Get started with ClawGUI-RL](clawgui-rl/README.md)**
@@ -133,7 +133,7 @@ ClawGUI-Agent closes the loop from training to production. Built on OpenClaw and
 - **Web UI** — Gradio interface for device management, task execution, and memory inspection
 
 <div align="center">
-<img src="clawgui-agent/assets/clawgui-agent-logo.png" width="85%" alt="ClawGUI-Agent">
+<img src="clawgui-agent/assets/clawgui-agent-logo.png" width="75%" alt="ClawGUI-Agent">
 </div>
 
 → **[Get started with ClawGUI-Agent](clawgui-agent/README.md)**
