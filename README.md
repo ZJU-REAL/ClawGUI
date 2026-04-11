@@ -113,7 +113,7 @@ ClawGUI-Eval gives GUI grounding research a reliable measurement baseline. Its t
 - **ClawGUI-Agent integration** — Pair with ClawGUI-Agent to run the full pipeline via natural language
 
 <div align="center">
-<img src="clawgui-eval/assets/clawgui-eval-arch.png" width="80%" alt="ClawGUI-Eval Architecture">
+<img src="clawgui-eval/assets/clawgui-eval-arch.png" width="95%" alt="ClawGUI-Eval Architecture">
 </div>
 
 → **[Get started with ClawGUI-Eval](clawgui-eval/README.md)**
@@ -133,7 +133,7 @@ ClawGUI-Agent closes the loop from training to production. Built on OpenClaw and
 - **Web UI** — Gradio interface for device management, task execution, and memory inspection
 
 <div align="center">
-<img src="clawgui-agent/assets/clawgui-agent-logo.png" width="75%" alt="ClawGUI-Agent">
+<img src="clawgui-agent/assets/clawgui-agent-logo.png" width="70%" alt="ClawGUI-Agent">
 </div>
 
 → **[Get started with ClawGUI-Agent](clawgui-agent/README.md)**
