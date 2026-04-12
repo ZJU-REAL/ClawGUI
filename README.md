@@ -133,7 +133,7 @@ ClawGUI-Agent closes the loop from training to production. Built on OpenClaw and
 - **Web UI** — Gradio interface for device management, task execution, and memory inspection
 
 <div align="center">
-<img src="clawgui-agent/assets/clawgui-agent-logo.png" width="70%" alt="ClawGUI-Agent">
+<img src="clawgui-agent/assets/clawgui-agent-logo.png" width="90%" alt="ClawGUI-Agent">
 </div>
 
 → **[Get started with ClawGUI-Agent](clawgui-agent/README.md)**
