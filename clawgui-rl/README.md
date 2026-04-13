@@ -112,7 +112,7 @@ git clone https://github.com/sugarandgugu/ClawGUI-Server
 
 #### Step 2 — Set up the server
 
-Follow the installation guide in the OpenGUI-Server repository. Key steps include:
+Follow the installation guide in the ClawGUI-Server repository. Key steps include:
 
 1. **Verify KVM support** — Ensure your machine supports KVM virtualization (`kvm-ok` or check `/dev/kvm`).
 2. **Pull the Docker image** — Pull the MobileWorld Android emulator image as described in the OpenGUI-Server docs.
