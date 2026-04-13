@@ -88,7 +88,7 @@ BENCHMARK_DATA_MAP = {
     "mmbench-gui-guig2"       : "data/mmbench-gui-guig2.json",
     "mmbench-gui-uivenus"     : "data/mmbench-gui-guig2.json",
     # androidcontrol
-    "androidcontrol-high-qwen3vl"  : "data/androidcontrol_high_qwen3vl.json",
+    "androidcontrol-high-qwen3vl" : "data/androidcontrol_high_qwen3vl.json",
     "androidcontrol-low-qwen3vl"  : "data/androidcontrol_low_qwen3vl.json",
 }
 
