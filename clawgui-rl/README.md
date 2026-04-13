@@ -107,7 +107,7 @@ ClawGUI-RL supports two training modes: **virtual environment scaling** (via Doc
 #### Step 1 — Clone OpenGUI-Server
 
 ```bash
-git clone https://github.com/sugarandgugu/OpenGUI-Server.git
+git clone https://github.com/sugarandgugu/ClawGUI-Server
 ```
 
 #### Step 2 — Set up the server
