@@ -205,7 +205,7 @@ Before running, make sure the following key fields in the script are correctly s
 bash examples/grpo_trainer/run_mobileworld.sh
 ```
 
-> **Note:** We have verified GRPO and GiGPO training. Other algorithms are welcome to be tested.
+> **Note:** We have verified GRPO and GiGPO training. We also provide scripts for GSPO and DAPO, but have not run experiments with them. Contributions and test results are welcome!
 
 **GiGPO training** integrates a Process Reward Model (PRM) for finer-grained step-level reward signals, generally yielding better performance than GRPO. To use it:
 

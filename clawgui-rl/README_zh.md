@@ -153,6 +153,8 @@ bash examples/grpo_trainer/run_mobileworld.sh
 bash examples/gigpo_trainer/run_mobileworld.sh
 ```
 
+> **注意：** 我们已验证 GRPO 和 GiGPO 训练。此外还提供了 GSPO 与 DAPO 的训练脚本，但尚未进行相关实验。欢迎您的测试与反馈！
+
 > **重要：** `mobileworld_server.txt` 中的 URL 数量必须 **≥ `train_batch_size` × `group_size`**，强烈建议额外注册若干 Spare Server。容器存在截图失败、任务初始化异常等问题，系统会自动轮转到备用服务器，确保训练不中断。
 
 
