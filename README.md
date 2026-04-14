@@ -1,7 +1,7 @@
 <div align="center">
 
 <img src="assets/ClawGUI-Logo.png" height="140" alt="ClawGUI Logo">
-<h1>ClawGUI: Build, Evaluate, and Deploy GUI Agents</h1>
+<h1>ClawGUI: A Unified Framework for Training, Evaluating, and Deploying GUI Agents</h1>
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)

@@ -1,7 +1,7 @@
 <div align="center">
 
 <img src="assets/ClawGUI-Logo.png" height="140" alt="ClawGUI Logo">
-<h1>ClawGUI：构建、评测与部署 GUI 智能体</h1>
+<h1>ClawGUI：训练、评测与部署 GUI 智能体的统一框架</h1>
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
