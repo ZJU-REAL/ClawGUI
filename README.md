@@ -19,7 +19,7 @@
 
 
 <div align="center">
-<b>A unified research framework: train GUI agents with RL, measure them rigorously, deploy them on real devices.</b>
+<b>A full-stack framework for GUI agents, covering online RL training, standardized evaluation, and deployment.</b>
 
 <table>
 <tr>
