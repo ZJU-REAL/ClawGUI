@@ -6,10 +6,11 @@
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Stars](https://img.shields.io/github/stars/ZJU-REAL/ClawGUI?style=social)](https://github.com/ZJU-REAL/ClawGUI/stargazers)
+[![arXiv](https://img.shields.io/badge/📄%20arXiv-2604.11784-b31b1b.svg)](https://arxiv.org/abs/2604.11784)
+
 [![HuggingFace Model](https://img.shields.io/badge/🤗%20HuggingFace-ClawGUI--2B-yellow.svg)](https://huggingface.co/SugarVapeur/OpenGUI-2B)
 [![ModelScope Model](https://img.shields.io/badge/🤖%20ModelScope-ClawGUI--2B-purple.svg)](https://www.modelscope.cn/models/SugarFree/OpenGUI-2B)
 [![Project Page](https://img.shields.io/badge/🌐%20Project-Page-orange.svg)](https://zju-real.github.io/ClawGUI-Page/)
-[![arXiv](https://img.shields.io/badge/📄%20arXiv-2604.11784-b31b1b.svg)](https://arxiv.org/abs/2604.11784)
 
 [English](README.md) | [中文](README_zh.md)
 
@@ -179,3 +180,14 @@ ClawGUI 基于以下优秀的开源项目构建，在此衷心感谢各项目的
 ## 许可证
 
 本项目基于 [Apache License 2.0](LICENSE) 开源。
+
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=ZJU-REAL%2FClawGUI&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ZJU-REAL/ClawGUI&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ZJU-REAL/ClawGUI&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ZJU-REAL/ClawGUI&type=date&legend=top-left" />
+ </picture>
+</a>
