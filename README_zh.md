@@ -9,6 +9,7 @@
 [![HuggingFace Model](https://img.shields.io/badge/🤗%20HuggingFace-ClawGUI--2B-yellow.svg)](https://huggingface.co/SugarVapeur/OpenGUI-2B)
 [![ModelScope Model](https://img.shields.io/badge/🤖%20ModelScope-ClawGUI--2B-purple.svg)](https://www.modelscope.cn/models/SugarFree/OpenGUI-2B)
 [![Project Page](https://img.shields.io/badge/🌐%20Project-Page-orange.svg)](https://zju-real.github.io/ClawGUI-Page/)
+[![arXiv](https://img.shields.io/badge/📄%20arXiv-2604.11784-b31b1b.svg)](https://arxiv.org/abs/2604.11784)
 
 [English](README.md) | [中文](README_zh.md)
 
@@ -35,6 +36,7 @@
 
 ## 新闻
 
++ 📄 **[2026/4/14]** 论文已发布至 arXiv：[ClawGUI: Build, Evaluate, and Deploy GUI Agents](https://arxiv.org/abs/2604.11784)。
 + 🔥 **[2026/4/8]** ClawGUI 正式发布——ClawGUI-RL（GiGPO）训练、ClawGUI-Eval 评测、ClawGUI-Agent 部署，三件套一次到位。基于该完整链路训练的 ClawGUI-2B 在 MobileWorld SR 上达到 **17.1**，大幅超越基线 **11.1**。查看 [快速开始](#-快速开始) 上手。
 
 ## 目录

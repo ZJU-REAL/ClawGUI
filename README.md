@@ -9,6 +9,7 @@
 [![HuggingFace Model](https://img.shields.io/badge/🤗%20HuggingFace-ClawGUI--2B-yellow.svg)](https://huggingface.co/SugarVapeur/OpenGUI-2B)
 [![ModelScope Model](https://img.shields.io/badge/🤖%20ModelScope-ClawGUI--2B-purple.svg)](https://www.modelscope.cn/models/SugarFree/OpenGUI-2B)
 [![Project Page](https://img.shields.io/badge/🌐%20Project-Page-orange.svg)](https://zju-real.github.io/ClawGUI-Page/)
+[![arXiv](https://img.shields.io/badge/📄%20arXiv-2604.11784-b31b1b.svg)](https://arxiv.org/abs/2604.11784)
 
 [English](README.md) | [中文](README_zh.md)
 
@@ -35,6 +36,7 @@
 
 ## News
 
++ 📄 **[2026/4/14]** Our paper is available on arXiv: [ClawGUI: Build, Evaluate, and Deploy GUI Agents](https://arxiv.org/abs/2604.11784).
 + 🔥 **[2026/4/8]** ClawGUI is released — train with ClawGUI-RL (GiGPO), evaluate with ClawGUI-Eval, deploy with ClawGUI-Agent. ClawGUI-2B, a 2B agent trained end-to-end with this pipeline, hits **17.1** MobileWorld SR vs. the **11.1** baseline. See [Quick Start](#-quick-start).
 
 ## Table of Contents
