@@ -7,6 +7,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Stars](https://img.shields.io/github/stars/ZJU-REAL/ClawGUI?style=social)](https://github.com/ZJU-REAL/ClawGUI/stargazers)
 [![arXiv](https://img.shields.io/badge/📄%20arXiv-2604.11784-b31b1b.svg)](https://arxiv.org/abs/2604.11784)
+[![Daily Paper](https://img.shields.io/badge/🤗%20Daily-Paper-yellow.svg)](https://huggingface.co/papers/2604.11784)
 
 [![HuggingFace Model](https://img.shields.io/badge/🤗%20HuggingFace-ClawGUI--2B-yellow.svg)](https://huggingface.co/SugarVapeur/OpenGUI-2B)
 [![ModelScope Model](https://img.shields.io/badge/🤖%20ModelScope-ClawGUI--2B-purple.svg)](https://www.modelscope.cn/models/SugarFree/OpenGUI-2B)
