@@ -21,6 +21,7 @@ from tqdm import tqdm
 from base_judge import BaseJudge
 from grounding_judge import guig2_parse as _grounding_guig2_parse
 from grounding_judge import seed18_parse as _grounding_seed18_parse
+from grounding_judge import kimi_parse as _grounding_kimi_parse
 
 REFUSAL = (-1, -1)  # sentinel for model refusal output
 
@@ -209,6 +210,15 @@ def seed18_parse(infer_str: str, image_size: List[int]) -> Optional[Tuple[float,
     return _grounding_seed18_parse(infer_str, image_size)
 
 
+def kimi_parse(infer_str: str, image_size: List[int]) -> Optional[Tuple[float, float]]:
+    """Kimi K2.5: [0,1000] (x,y), with refusal check."""
+    if not infer_str:
+        return None
+    if _is_refusal_output(infer_str):
+        return REFUSAL
+    return _grounding_kimi_parse(infer_str, image_size)
+
+
 # ---------- geometry helpers ----------
 
 def is_point_in_rectangle(point: Tuple[float, float], rect: List[float]) -> bool:
@@ -265,8 +275,10 @@ class OSWorldGJudge(BaseJudge):
                     return guig2_parse(value, image_size)
                 elif model_type == 'seed':
                     return seed18_parse(value, image_size)
+                elif model_type == 'kimi':
+                    return kimi_parse(value, image_size)
                 else:
-                    supported = ['qwen3vl', 'guiowl15', 'qwen25vl', 'guig2', 'uivenus', 'uitars', 'stepgui', 'uivenus15', 'maiui', 'seed']
+                    supported = ['qwen3vl', 'guiowl15', 'qwen25vl', 'guig2', 'uivenus', 'uitars', 'stepgui', 'uivenus15', 'maiui', 'seed', 'kimi']
                     raise ValueError(f"Unsupported model_type: '{model_type}'. Supported: {supported}")
         return None
 

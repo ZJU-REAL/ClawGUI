@@ -7,7 +7,7 @@ EXP_NAME="uivenus-exp"
 # ======================
 # Model Configuration
 # ======================
-# options: maiui qwen3vl qwen25vl uitars stepgui uivenus uivenus15 guiowl15 guig2
+# options: maiui qwen3vl qwen25vl uitars stepgui uivenus uivenus15 guiowl15 guig2 seed gemini kimi
 MODEL_TYPE="uivenus"
 
 # ======================

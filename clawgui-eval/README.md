@@ -39,7 +39,7 @@
 **Key Features:**
 - **Dual backend support** — Local GPU via `transformers` or remote API via OpenAI-compatible endpoints
 - **6 benchmarks** — ScreenSpot-Pro, ScreenSpot-V2, UIVision, MMBench-GUI, OSWorld-G, AndroidControl
-- **11+ models** — Qwen3-VL, Qwen2.5-VL, UI-TARS, MAI-UI, GUI-G2, UI-Venus, Gemini, Seed 1.8, and more
+- **12+ models** — Qwen3-VL, Qwen2.5-VL, UI-TARS, MAI-UI, GUI-G2, UI-Venus, Gemini, Seed 1.8, Kimi K2.5, and more
 - **Multi-GPU & multi-thread** — `NUM_GPUS` processes launched via Python `multiprocessing`, each pinned to one GPU via `CUDA_VISIBLE_DEVICES`. Shard files are automatically split and merged; interrupted runs resume from the last completed shard.
 - **Easily extensible** — Add new models by inheriting a simple base class; shared architectures (e.g. UI-TARS extends Qwen2.5-VL) reuse parent model loading and only override prompt building and output parsing
 - **Faithful reproduction** — Comprehensive reproduction results with detailed official vs. reproduced comparisons ([see details](#-reproduction-results))
@@ -172,7 +172,8 @@ clawgui-eval/
 │   ├── uivenus15_inferencer.py          # UI-Venus 1.5 (extends Qwen3-VL)
 │   ├── uivenus_inferencer.py            # UI-Venus (extends GUI-G2)
 │   ├── gemini_inferencer.py             # Gemini (API, optional Zoom)
-│   └── seed_inferencer.py               # Seed 1.8 (API, optional Zoom)
+│   ├── seed_inferencer.py               # Seed 1.8 (API, optional Zoom)
+│   └── kimi_inferencer.py               # Kimi K2.5 (API, optional Zoom)
 ├── 📂 judge/                            # Judgment module
 │   ├── base_judge.py                    # Abstract base class
 │   ├── grounding_judge.py               # Point-in-box judge (most benchmarks)
@@ -224,6 +225,7 @@ clawgui-eval/
 | `uivenus` | UI-Venus | Extends GUI-G2 | `[0, 1000]` | `vt` | ❌ None | ✅ | ✅ | ✅ | ✅ | ✅ | - |
 | `gemini` | Gemini 3.x Pro | API (optional Zoom) | `[0, 1000]` | `tv` | ✅ Built-in | ✅ | - | - | - | - | - |
 | `seed` | Seed 1.8 | API (optional Zoom) | `[0, 1000]` | `tv` | ✅ Built-in | ✅ | - | - | - | - | - |
+| `kimi` | Kimi K2.5 | API (optional Zoom) | `[0, 1000]` | `tv` | ✅ Built-in | ✅ | ✅ | ✅ | ✅ | ✅ | - |
 
 ### Frontier / Closed-Source Models
 
@@ -325,6 +327,9 @@ bash scripts/infer/vllm_depoly/vllm_serve.sh
 
 # 2. Run inference
 bash scripts/infer/api/qwen3vl_run_api.sh
+
+# Kimi K2.5 API
+bash scripts/infer/api/kimi_run_api.sh
 ```
 
 Output is saved to:
@@ -467,6 +472,7 @@ A key goal of ClawGUI-Eval is **faithful reproduction** of officially reported n
 | Gemini 3.0 Pro (Zoom, API) | 72.70 | **75.08** ✅ | - | - | - | - | - | - | - | - |
 | Gemini 3.1 Pro (Zoom, API) | - | **85.01** | - | - | - | - | - | - | - | - |
 | Seed 1.8 (Zoom, API) | 73.10 | **72.80** ✅ | - | - | - | - | - | - | - | - |
+| Kimi K2.5 (API) | - | - | - | - | - | - | - | - | - | - |
 
 **Open-Source GUI Grounding Reproduction Rate:** 44 / 46 cells with official baselines = **95.7%**
 

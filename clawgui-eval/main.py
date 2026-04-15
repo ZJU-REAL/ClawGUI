@@ -33,6 +33,7 @@ from inference import get_inferencer
 BENCHMARK_DATA_MAP = {
     # screenspot-v2
     "screenspot-v2"           : "data/screenspot-v2.json",
+    "screenspot-v2-kimi"      : "data/screenspot-v2.json",
     "screenspot-v2-qwen3vl"   : "data/screenspot-v2-qwen3vl.json",
     "screenspot-v2-qwen25vl"  : "data/screenspot-v2-qwen25vl.json",
     "screenspot-v2-uitars"    : "data/screenspot-v2-uitars.json",
@@ -45,6 +46,7 @@ BENCHMARK_DATA_MAP = {
     # screenspot-pro
     "screenspot-pro"          : "data/screenspot-pro.json",
     "screenspot-pro-seed"     : "data/screenspot-pro.json",
+    "screenspot-pro-kimi"     : "data/screenspot-pro.json",
     "screenspot-pro-qwen3vl"  : "data/screenspot-pro-qwen3vl.json",
     "screenspot-pro-qwen25vl" : "data/screenspot-pro-qwen25vl.json",
     "screenspot-pro-uitars"   : "data/screenspot-pro-uitars.json",
@@ -56,6 +58,7 @@ BENCHMARK_DATA_MAP = {
     "screenspot-pro-uivenus"  : "data/screenspot-pro-guig2.json",
     # uivision
     "uivision"                : "data/uivision.json",
+    "uivision-kimi"           : "data/uivision.json",
     "uivision-qwen3vl"        : "data/uivision-qwen3vl.json",
     "uivision-qwen25vl"       : "data/uivision-qwen25vl.json",
     "uivision-uitars"         : "data/uivision-uitars.json",
@@ -67,6 +70,7 @@ BENCHMARK_DATA_MAP = {
     "uivision-uivenus"        : "data/uivision-guig2.json",
     # osworld-g
     "osworld-g"               : "data/osworld-g.json",
+    "osworld-g-kimi"          : "data/osworld-g.json",
     "osworld-g-qwen3vl"       : "data/osworld-g-qwen3vl.json",
     "osworld-g-qwen25vl"      : "data/osworld-g-qwen25vl.json",
     "osworld-g-uitars"        : "data/osworld-g-uitars.json",
@@ -78,6 +82,7 @@ BENCHMARK_DATA_MAP = {
     "osworld-g-uivenus"       : "data/osworld-g-guig2.json",
     # mmbench-gui
     "mmbench-gui"             : "data/mmbench-gui.json",
+    "mmbench-gui-kimi"        : "data/mmbench-gui.json",
     "mmbench-gui-qwen3vl"     : "data/mmbench-gui-qwen3vl.json",
     "mmbench-gui-qwen25vl"    : "data/mmbench-gui-qwen25vl.json",
     "mmbench-gui-uitars"      : "data/mmbench-gui-uitars.json",

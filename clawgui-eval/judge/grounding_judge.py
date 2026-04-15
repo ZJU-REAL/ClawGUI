@@ -303,6 +303,37 @@ def seed18_parse(infer_str: str, image_size: List[int]) -> Optional[Tuple[float,
     return (abs_x, abs_y)
 
 
+def kimi_parse(infer_str: str, image_size: List[int]) -> Optional[Tuple[float, float]]:
+    """
+    Parse Kimi K2.5 output into absolute pixel coordinates.
+
+    Output format: (x, y) or bare x, y
+    Coordinates are [0, 1000]-normalized.
+    """
+    if not infer_str:
+        return None
+
+    # Method 1: match (x,y) or (x, y) format
+    pattern = r'\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*\)'
+    matches = re.findall(pattern, infer_str)
+    if matches:
+        x, y = matches[-1]
+        coords = [float(x), float(y)]
+        width, height = image_size
+        return (coords[0] / 1000.0 * width, coords[1] / 1000.0 * height)
+
+    # Method 2: match bare x,y format without parentheses
+    pattern2 = r'(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)'
+    matches2 = re.findall(pattern2, infer_str)
+    if matches2:
+        x, y = matches2[-1]
+        coords = [float(x), float(y)]
+        width, height = image_size
+        return (coords[0] / 1000.0 * width, coords[1] / 1000.0 * height)
+
+    return None
+
+
 def maiui_parse(infer_str: str, image_size: List[int]) -> Optional[Tuple[float, float]]:
     """
     Parse MAI-UI output into absolute pixel coordinates.
@@ -385,8 +416,10 @@ class ScreenSpotJudge(BaseJudge):
                     return maiui_parse(value, image_size)
                 elif model_type == 'seed':
                     return seed18_parse(value, image_size)
+                elif model_type == 'kimi':
+                    return kimi_parse(value, image_size)
                 else:
-                    supported = ['qwen3vl', 'guiowl15', 'qwen25vl', 'guig2', 'uivenus', 'uitars', 'stepgui', 'uivenus15', 'maiui', 'seed']
+                    supported = ['qwen3vl', 'guiowl15', 'qwen25vl', 'guig2', 'uivenus', 'uitars', 'stepgui', 'uivenus15', 'maiui', 'seed', 'kimi']
                     raise ValueError(f"Unsupported model_type: '{model_type}'. Supported: {supported}")
         return None
 

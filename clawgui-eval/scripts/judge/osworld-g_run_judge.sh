@@ -7,7 +7,7 @@ EXP_NAME="guiowl15-8b-exp"
 # ======================
 # Model Configuration
 # ======================
-# options: maiui qwen3vl qwen25vl uitars stepgui uivenus uivenus15 guiowl15 guig2
+# options: maiui qwen3vl qwen25vl uitars stepgui uivenus uivenus15 guiowl15 guig2 seed gemini kimi
 MODEL_TYPE="guiowl15"
 
 # Whether to include refusal samples in the accuracy denominator.

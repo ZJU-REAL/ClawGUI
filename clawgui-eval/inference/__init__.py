@@ -12,6 +12,7 @@ from .guig2_inferencer import GUIG2Inferencer
 from .uivenus_inferencer import UIVenusInferencer
 from .seed_inferencer import SeedInferencer
 from .gemini_inferencer import GeminiInferencer
+from .kimi_inferencer import KimiInferencer
 
 
 INFERENCER_REGISTRY = {
@@ -26,6 +27,7 @@ INFERENCER_REGISTRY = {
     "uivenus"   : UIVenusInferencer,
     "seed"      : SeedInferencer,
     "gemini"    : GeminiInferencer,
+    "kimi"      : KimiInferencer,
 }
 
 
@@ -67,6 +69,7 @@ __all__ = [
     "UIVenusInferencer",
     "SeedInferencer",
     "GeminiInferencer",
+    "KimiInferencer",
     "INFERENCER_REGISTRY",
     "get_inferencer",
 ]

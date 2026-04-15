@@ -7,7 +7,7 @@ EXP_NAME="guig2-exp"
 # ======================
 # Model Configuration
 # ======================
-# options: maiui qwen3vl qwen25vl uitars stepgui uivenus uivenus15 guiowl15 guig2 seed
+# options: maiui qwen3vl qwen25vl uitars stepgui uivenus uivenus15 guiowl15 guig2 seed gemini kimi
 MODEL_TYPE="guig2"
 
 # ======================
