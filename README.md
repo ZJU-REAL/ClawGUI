@@ -183,6 +183,20 @@ ClawGUI is built upon the following excellent open-source projects. We sincerely
 This project is licensed under the [Apache License 2.0](LICENSE).
 
 
+## 📝 Citation
+
+If you find ClawGUI useful in your research, please consider citing our paper:
+
+```bibtex
+@article{tang2026clawgui,
+  title={ClawGUI: A Unified Framework for Training, Evaluating, and Deploying GUI Agents},
+  author={Tang, Fei and Lu, Zhiqiong and Zhang, Boxuan and Lu, Weiming and Xiao, Jun and Zhuang, Yueting and Shen, Yongliang},
+  journal={arXiv preprint arXiv:2604.11784},
+  year={2026}
+}
+```
+
+
 ## Star History
 
 <a href="https://www.star-history.com/?repos=ZJU-REAL%2FClawGUI&type=date&legend=top-left">
