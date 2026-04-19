@@ -88,8 +88,24 @@ class ModelClient:
         for chunk in stream:
             if len(chunk.choices) == 0:
                 continue
-            if chunk.choices[0].delta.content is not None:
-                content = chunk.choices[0].delta.content
+
+            # Handle reasoning_content (for reasoning models like MAI-UI-2B)
+            reasoning_content = getattr(chunk.choices[0].delta, 'reasoning_content', None)
+            if reasoning_content is not None:
+                raw_content += reasoning_content
+
+                # Record time to first token
+                if not first_token_received:
+                    time_to_first_token = time.time() - start_time
+                    first_token_received = True
+
+                if not in_action_phase:
+                    # Print reasoning content as it arrives (thinking phase)
+                    print(reasoning_content, end="", flush=True)
+
+            # Handle regular content
+            content = getattr(chunk.choices[0].delta, 'content', None)
+            if content is not None:
                 raw_content += content
 
                 # Record time to first token
