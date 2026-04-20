@@ -515,6 +515,14 @@ Examples:
     )
 
     parser.add_argument(
+        "--model-type",
+        type=str,
+        choices=["auto", "autoglm", "uitars", "qwenvl", "maiui", "guiowl"],
+        default=os.getenv("PHONE_AGENT_MODEL_TYPE", "auto"),
+        help="Model adapter type (default: auto, auto-detect from model name)",
+    )
+
+    parser.add_argument(
         "task",
         nargs="?",
         type=str,
@@ -773,6 +781,7 @@ def main():
             device_id=args.device_id,
             verbose=not args.quiet,
             lang=args.lang,
+            model_type=args.model_type,
         )
 
         agent = PhoneAgent(

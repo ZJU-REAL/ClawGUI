@@ -837,12 +837,31 @@ class StreamingAgent:
             last_yield_time = time.time()
             yield_interval = 0.3  # 300ms 更新一次界面
             
+            import re as _re
+            def _clean_thinking_tags(text: str) -> str:
+                """清理 thinking/think 标签，避免 Markdown 渲染时被当作 HTML 吞掉"""
+                return _re.sub(r'</?(?:thinking|think)>', '', text)
+            
             for chunk in stream:
                 if self._should_stop:
                     break
                     
                 if len(chunk.choices) == 0:
                     continue
+                
+                # Handle reasoning_content (for reasoning models like MAI-UI-2B)
+                reasoning_content = getattr(chunk.choices[0].delta, 'reasoning_content', None)
+                if reasoning_content is not None:
+                    raw_content += reasoning_content
+                    if not in_action_phase:
+                        pending_content += reasoning_content
+                        current_time = time.time()
+                        if current_time - last_yield_time >= yield_interval or len(pending_content) > 100:
+                            thinking_log += _clean_thinking_tags(pending_content)
+                            pending_content = ""
+                            last_yield_time = current_time
+                            yield thinking_log, action_log, None
+                
                 if chunk.choices[0].delta.content is not None:
                     content = chunk.choices[0].delta.content
                     raw_content += content
@@ -857,7 +876,7 @@ class StreamingAgent:
                         if in_action_phase:
                             # 刚进入 action 阶段，先把缓冲中的 thinking 内容 flush 出去
                             if pending_content:
-                                thinking_log += pending_content
+                                thinking_log += _clean_thinking_tags(pending_content)
                                 pending_content = ""
                                 yield thinking_log, action_log, None
                         else:
@@ -865,14 +884,14 @@ class StreamingAgent:
                             # 批量更新：每隔一段时间或内容较多时才更新
                             current_time = time.time()
                             if current_time - last_yield_time >= yield_interval or len(pending_content) > 100:
-                                thinking_log += pending_content
+                                thinking_log += _clean_thinking_tags(pending_content)
                                 pending_content = ""
                                 last_yield_time = current_time
                                 yield thinking_log, action_log, None
             
             # 输出剩余的内容
             if pending_content:
-                thinking_log += pending_content
+                thinking_log += _clean_thinking_tags(pending_content)
             
         except Exception as e:
             action_log += f"\n❌ 模型请求错误: {str(e)}"
