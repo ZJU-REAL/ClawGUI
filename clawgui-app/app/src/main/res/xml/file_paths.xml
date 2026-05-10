@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <files-path name="app_logs" path="logs/" />
+    <files-path name="workspace_diagnostics" path="workspace/diagnostics/" />
+    <cache-path name="cache" path="/" />
+</paths>

@@ -49,6 +49,7 @@
   - [ClawGUI-RL — Build](#-clawgui-rl--build)
   - [ClawGUI-Eval — Evaluate](#-clawgui-eval--evaluate)
   - [ClawGUI-Agent — Deploy](#-clawgui-agent--deploy)
+  - [ClawGUI-APP — On-Device Deploy](#-clawgui-app--on-device-deploy)
 - [Roadmap](#️-roadmap)
 - [Acknowledgements](#-acknowledgements)
 - [License](#-license)
@@ -65,6 +66,7 @@ Building a capable GUI agent involves three tightly coupled problems that are ra
 | 🚀 **[ClawGUI-RL](clawgui-rl/)** | **Build** — Train GUI agents online with scalable RL: parallel Docker environments, real Android devices, and GiGPO+PRM for fine-grained step-level rewards |
 | 📊 **[ClawGUI-Eval](clawgui-eval/)** | **Evaluate** — Measure what the agent has learned: 6 benchmarks, 11+ models, 95.8% faithful reproduction of official results |
 | 🤖 **[ClawGUI-Agent](clawgui-agent/)** | **Deploy** — Use GUI agents in the real world: control mobile devices via natural language through 12+ chat platforms, with one-command evaluation built in |
+| 📱 **[ClawGUI-APP](clawgui-app/)** | **On-Device Deploy** — Run the full brain + GUI agent stack directly on one Android phone, no desktop coordinator needed, powered by Shizuku |
 | 🏆 **ClawGUI-2B** | End-to-end validation: trained entirely with ClawGUI-RL and GiGPO, achieving **17.1** MobileWorld SR vs. the **11.1** baseline |
 
 
@@ -143,13 +145,28 @@ ClawGUI-Agent closes the loop from training to production. Built on OpenClaw and
 → **[Get started with ClawGUI-Agent](clawgui-agent/README.md)**
 
 
+### 📱 ClawGUI-APP — On-Device Deploy
+
+> 📁 [`clawgui-app/`](clawgui-app/) · 📖 [Full Documentation](clawgui-app/README.md) · [中文安装指南](clawgui-app/SETUP.md) · [English Setup](clawgui-app/SETUP_EN.md)
+
+ClawGUI-APP runs the full ClawGUI "brain + GUI agent" stack directly on one Android phone, removing the old split architecture where a desktop host orchestrates tasks and the phone only executes them. Built on Shizuku for high-privilege, non-root device control.
+
+- **Phone-only workflow** — No desktop coordinator required; a device with Shizuku is enough
+- **Two-agent design** — Brain LLM handles planning and tool orchestration, phone agent handles screen understanding and actions
+- **Multi-model support** — AutoGLM, MAI-UI, GUI-Owl, Qwen-VL, UI-TARS and more via OpenAI-compatible API
+- **Conversation + automation** — Sessions, long-term memory, external channels (Feishu), and trace replay
+- **Built for real usage** — Floating overlay status, built-in IME, session persistence, and diagnostics
+
+→ **[Get started with ClawGUI-APP](clawgui-app/README.md)**
+
+
 ## 🎯 Roadmap
 
 - [x] **ClawGUI-Agent** — GUI agent framework for phone control and evaluation via natural language
 - [x] **ClawGUI-RL** — Scalable mobile online RL training infrastructure with GiGPO + PRM
 - [x] **ClawGUI-Eval** — Standardized GUI grounding evaluation suite with 6 benchmarks and 95%+ reproduction rate
 - [x] **ClawGUI-2B** — 2B GUI agent trained with GiGPO, achieving 17.1 MobileWorld SR (vs. 11.1 baseline)
-- [ ] **On-device ClawGUI-Agent** — Deploy ClawGUI-Agent directly on real phones to avoid cloud-based privacy leakage
+- [x] **On-device ClawGUI-Agent ([ClawGUI-APP](clawgui-app/))** — Deploy ClawGUI-Agent directly on real phones to avoid cloud-based privacy leakage
 - [ ] **Desktop Online RL** — Extend ClawGUI-RL to desktop environments for online reinforcement learning
 - [ ] **Web Online RL** — Extend ClawGUI-RL to web environments for online reinforcement learning
 - [ ] **More Skills for ClawGUI-Agent** — Add more pluggable skills to expand ClawGUI-Agent's capabilities

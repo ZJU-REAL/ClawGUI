@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ClawGUI-APP</string>
+
+    <!-- Navigation -->
+    <string name="tab_chat">对话</string>
+    <string name="tab_history">记录</string>
+    <string name="tab_settings">设置</string>
+
+    <!-- Chat screen -->
+    <string name="chat_placeholder">告诉 AI 你想做什么…</string>
+    <string name="chat_send">发送</string>
+    <string name="chat_stop">停止</string>
+    <string name="chat_ready">准备就绪，告诉我你想做什么</string>
+    <string name="chat_connect_shizuku">请先连接 Shizuku</string>
+    <string name="chat_executing">正在执行 Step %1$d</string>
+
+    <!-- History screen -->
+    <string name="history_title">执行记录</string>
+    <string name="history_empty">暂无执行记录</string>
+    <string name="history_empty_hint">执行任务后记录会显示在这里</string>
+    <string name="history_steps">%1$d 步</string>
+    <string name="history_delete">删除</string>
+
+    <!-- Settings screen -->
+    <string name="settings_title">设置</string>
+    <string name="settings_api_key">API Key</string>
+    <string name="settings_api_key_hint">输入智谱 API Key</string>
+    <string name="settings_api_base_url">API Base URL</string>
+    <string name="settings_api_base_url_hint">默认: https://open.bigmodel.cn/api/paas/v4</string>
+    <string name="settings_max_steps">最大步骤数</string>
+    <string name="settings_shizuku">Shizuku 状态</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_version">版本</string>
+
+    <!-- Shizuku -->
+    <string name="shizuku_connected">Shizuku 已连接</string>
+    <string name="shizuku_not_connected">Shizuku 未连接</string>
+    <string name="shizuku_available">设备控制功能可用</string>
+    <string name="shizuku_unavailable">请启动 Shizuku 并授权</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome">欢迎使用 ClawGUI</string>
+    <string name="onboarding_welcome_desc">通过对话方式让 AI 自动操作你的手机</string>
+    <string name="onboarding_shizuku_title">连接 Shizuku</string>
+    <string name="onboarding_shizuku_desc">ClawGUI 需要 Shizuku 来控制手机。\n请先在 Shizuku App 中开启服务，再回到这里授权。\n\n首次配对需要连接电脑执行一条 ADB 命令，之后可以通过无线调试独立启动。</string>
+    <string name="onboarding_skip">跳过</string>
+    <string name="onboarding_next">下一步</string>
+    <string name="onboarding_start">开始使用</string>
+    <string name="onboarding_grant_shizuku">授权 Shizuku</string>
+
+    <!-- Status -->
+    <string name="status_completed">已完成</string>
+    <string name="status_failed">失败</string>
+    <string name="status_stopped">已停止</string>
+    <string name="status_running">执行中</string>
+
+    <!-- Common -->
+    <string name="btn_confirm">确定</string>
+    <string name="btn_cancel">取消</string>
+    <string name="btn_close">关闭</string>
+    <string name="btn_back">返回</string>
+    <string name="btn_got_it">知道了</string>
+    <string name="toast_enter_instruction">请输入指令</string>
+    <string name="toast_enter_api_key">请输入 API Key</string>
+    <string name="toast_start_shizuku">请先启动 Shizuku App</string>
+    <string name="toast_shizuku_granted">Shizuku 权限已获取</string>
+    <string name="toast_task_stopped">任务已停止</string>
+    <string name="toast_error">错误: %1$s</string>
+</resources>
