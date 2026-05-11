@@ -166,7 +166,7 @@ ClawGUI-APP runs the full ClawGUI "brain + GUI agent" stack directly on one Andr
 - [x] **ClawGUI-RL** — Scalable mobile online RL training infrastructure with GiGPO + PRM
 - [x] **ClawGUI-Eval** — Standardized GUI grounding evaluation suite with 6 benchmarks and 95%+ reproduction rate
 - [x] **ClawGUI-2B** — 2B GUI agent trained with GiGPO, achieving 17.1 MobileWorld SR (vs. 11.1 baseline)
-- [x] **On-device ClawGUI-Agent ([ClawGUI-APP](clawgui-app/))** — Deploy ClawGUI-Agent directly on real phones to avoid cloud-based privacy leakage
+- [x] **On-device ClawGUI-Agent ([ClawGUI-APP](clawgui-app/))** — Deploy ClawGUI-Agent directly on real phones — no desktop coordinator, paving the way for fully on-device inference (brain/VLM still served via cloud API today)
 - [ ] **Desktop Online RL** — Extend ClawGUI-RL to desktop environments for online reinforcement learning
 - [ ] **Web Online RL** — Extend ClawGUI-RL to web environments for online reinforcement learning
 - [ ] **More Skills for ClawGUI-Agent** — Add more pluggable skills to expand ClawGUI-Agent's capabilities
