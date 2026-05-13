@@ -70,15 +70,16 @@ clawgui-eval/scripts/generate_scripts/
 clawgui-rl/assets/gen_reward_curve.py
 OpenGUI-Server
 
-# Nanobot workspace runtime files
-AGENTS.md
-SOUL.md
-USER.md
-TOOLS.md
-HEARTBEAT.md
-memory/
-cron/
-sessions/
+# Nanobot workspace runtime files (root-level only; do not match
+# same-named directories inside sub-modules like clawgui-app)
+/AGENTS.md
+/SOUL.md
+/USER.md
+/TOOLS.md
+/HEARTBEAT.md
+/memory/
+/cron/
+/sessions/
 
 # Phone agent runtime data
 clawgui-agent/memory_db/
