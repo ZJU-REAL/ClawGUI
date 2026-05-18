@@ -103,12 +103,20 @@ object AutoGLMAdapter : ModelAdapter {
                 $refHint
                 请严格按系统提示的格式输出 `<think>...</think><answer>...</answer>`。
 
-                **首步特别要求**:`<think>` 的第 0 节"任务规约"必须显式拆出 4 行:
-                  目标 (Goal): ...
-                  终止条件 (Done When): ...
-                  禁止条件 (Don't): ...
-                  角色 (Role): 我代表用户向 ... 发送/操作,不替任何他人发声。
-                没有显式的 Done When 之前,不要进入第 1 节。
+                **当前屏幕是 ClawGUI 自己(驾驶舱),不是任务目标。**第一步只做规划,不要操作 ClawGUI。
+
+                `<think>` 必须包含:
+                  第 0 节 任务规约 4 行:目标 / 终止条件 / 禁止条件 / 角色。
+                  第 3 节 完整计划:列出 2-6 步要做什么(例:Launch 微信 → 搜联系人 → 进聊天 → 发消息 → finish)。
+                  第 4 节 进度:`已完成 0/N`(N 是计划步数)。
+                  其余小节按系统提示走。
+
+                `<answer>` 这一步**只能**是下列之一:
+                  - `do(action="Launch", app="目标App名")` ← 绝大多数情况
+                  - `do(action="Home")` ← 仅当任务就是用桌面 / 系统设置
+                  - `do(action="Ask", question="...")` ← 任务关键信息缺失
+                  - `finish(message="...")` ← 任务不需要操作手机就能答复
+                **禁止**首步出现 Tap / Swipe / Type / Back / Wait —— 它们对着 ClawGUI 截图毫无意义。
 
                 屏幕信息:${MessageBuilder.buildScreenInfo(currentApp, stepIndex)}
             """.trimIndent()
