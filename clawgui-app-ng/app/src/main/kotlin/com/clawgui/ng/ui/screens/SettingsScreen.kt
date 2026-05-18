@@ -119,11 +119,11 @@ fun SettingsScreen(onClose: () -> Unit) {
                     .fillMaxSize()
                     .windowInsetsPadding(WindowInsets.navigationBars),
             ) {
-                when (val p = page) {
+                when (page) {
                     SettingsPage.Home -> SettingsHomePage(onNavigate = { page = it })
                     SettingsPage.AiModels -> AiModelsPage()
                     SettingsPage.Channels -> ChannelsPage()
-                    SettingsPage.Shizuku -> ShizukuPage()
+                    SettingsPage.DeviceAuth -> DeviceAuthPage()
                     SettingsPage.Ime -> ImePage()
                     SettingsPage.Traces -> TracesPage()
                     SettingsPage.Performance -> PerformancePage()
@@ -140,7 +140,7 @@ private sealed class SettingsPage(val title: String) {
     data object Home : SettingsPage("设置")
     data object AiModels : SettingsPage("AI 模型")
     data object Channels : SettingsPage("外部通道")
-    data object Shizuku : SettingsPage("Shizuku")
+    data object DeviceAuth : SettingsPage("设备控制授权")
     data object Ime : SettingsPage("ClawGUI 输入法")
     data object Traces : SettingsPage("运行记录")
     data object Performance : SettingsPage("性能 · 截图压缩")
@@ -177,7 +177,7 @@ private fun SettingsHomePage(onNavigate: (SettingsPage) -> Unit) {
     val items = listOf(
         SettingsRowSpec("AI 模型", "大脑与视觉模型、API Key", Icons.Rounded.SmartToy, SettingsPage.AiModels),
         SettingsRowSpec("外部通道", "飞书等外部接入", Icons.Rounded.Hub, SettingsPage.Channels),
-        SettingsRowSpec("Shizuku", "设备控制授权", Icons.Rounded.VerifiedUser, SettingsPage.Shizuku),
+        SettingsRowSpec("设备控制授权", "无线调试 / Shizuku 二选一", Icons.Rounded.VerifiedUser, SettingsPage.DeviceAuth),
         SettingsRowSpec("ClawGUI 输入法", "允许 Agent 输入文字", Icons.Rounded.Keyboard, SettingsPage.Ime),
         SettingsRowSpec("性能 · 截图压缩", "调节上传给 VLM 的截图大小", Icons.Rounded.Speed, SettingsPage.Performance),
         SettingsRowSpec("通知", "Agent 执行时的通知与横幅", Icons.Rounded.Notifications, SettingsPage.Notification),
@@ -578,7 +578,7 @@ private fun ChannelsPage() {
         )
 
         InfoCard(
-            "**接入步骤**\n" +
+            "接入步骤\n" +
                 "1. 在飞书开放平台创建「企业自建应用」\n" +
                 "2. 「事件与回调 → 长连接」选择 WebSocket 模式\n" +
                 "3. 订阅事件 `im.message.receive_v1`\n" +
@@ -621,23 +621,84 @@ private fun ChannelsPage() {
     }
 }
 
+/**
+ * 设备控制授权页 ——「无线调试」和「Shizuku」两条路并列,任一就绪即可。
+ *
+ * Interaction model:
+ * - 顶部一张总状态卡:三态(已授权·via X / 配置中 / 未授权)
+ * - 下方两张方式卡(无线调试 + Shizuku),默认都展开
+ * - 一旦某条路 ready,**另一张卡自动折叠**成单行 "已通过 X 授权,无需配置",
+ *   留 [切换到此方式] 让用户主动展开,避免误改
+ * - 生效那张卡:绿色细边 + "当前生效" 角标 + 卡底一行小字 [断开此方式] 让用户主动退授权
+ * - 不互相 deauthorize:两边都可以同时活着(option B),PhoneAgent 优先使用 Shizuku
+ *   (Shizuku 通道延迟低、无网络依赖),wadb 作热备
+ */
 @Composable
-private fun ShizukuPage() {
-    var status by remember { mutableStateOf(probeShizuku()) }
-    var connecting by remember { mutableStateOf(false) }
+private fun DeviceAuthPage() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    OnResume { if (!connecting) status = probeShizuku() }
 
-    // Auto-attempt bind on page open so users don't always have to tap.
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        if (!RuntimeContainer.device.isAvailable() && RuntimeContainer.device.isShizukuAvailable()) {
-            connecting = true
-            status = ShizukuStatusView("正在连接…", StatusTone.Warning)
-            runCatching { RuntimeContainer.device.bindService() }
-            val ready = pollShizukuReady(timeoutMs = 3000L)
-            status = if (ready) probeShizuku() else probeShizuku()
-            connecting = false
+    // Shizuku side
+    val shizukuInstalled = remember { mutableStateOf(false) }
+    val shizukuBound = remember { mutableStateOf(false) }
+
+    // Wadb side
+    val wadb = remember { com.clawgui.ng.runtime.shizuku.wadb.WirelessAdb.get(ctx) }
+    val wadbState by wadb.state.collectAsStateWithLifecycle()
+    val wadbReady = wadbState is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Done ||
+        wadbState is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Connected
+
+    fun refresh() {
+        shizukuInstalled.value = runCatching { RuntimeContainer.device.isShizukuAvailable() }.getOrDefault(false)
+        shizukuBound.value = runCatching { RuntimeContainer.device.isAvailable() }.getOrDefault(false)
+    }
+    LaunchedEffect(Unit) { refresh() }
+    LaunchedEffect(wadbState) { refresh() }
+    OnResume { refresh() }
+
+    // Pending switch confirmation (set when user taps "切换到此方式" on the
+    // inactive card while the other one is currently active).
+    var pendingSwitch: ActivePath? by remember { mutableStateOf(null) }
+
+    val activePath: ActivePath = when {
+        // Both somehow live (race) — keep whichever was active *first*; the
+        // safety-net effect below will close the duplicate.
+        shizukuBound.value && !wadbReady -> ActivePath.Shizuku
+        wadbReady && !shizukuBound.value -> ActivePath.Wadb
+        shizukuBound.value && wadbReady -> ActivePath.Shizuku // we'll tear down wadb
+        else -> ActivePath.None
+    }
+
+    // Safety net: if both paths somehow ended up live at the same time (e.g.
+    // wadb finished pairing while Shizuku binder also reconnected on its own),
+    // tear down wadb to enforce the "二选一" invariant. We prefer keeping
+    // Shizuku because PhoneAgent prefers it and its disconnect is reversible.
+    LaunchedEffect(shizukuBound.value, wadbReady) {
+        if (shizukuBound.value && wadbReady) {
+            android.util.Log.i("DeviceAuth", "both paths live — auto-closing wadb")
+            runCatching {
+                com.clawgui.ng.runtime.shizuku.wadb.AdbManager.get(ctx).disconnectQuietly()
+            }
+            wadb.reset()
         }
+    }
+
+    val overallText = when (activePath) {
+        ActivePath.Shizuku -> "已授权 · 通过 Shizuku"
+        ActivePath.Wadb -> "已授权 · 通过无线调试"
+        ActivePath.None -> when {
+            wadbState is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Probing ||
+                wadbState is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Pairing ||
+                wadbState is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Connecting ||
+                wadbState is com.clawgui.ng.runtime.shizuku.wadb.WadbState.WaitingForPairing ||
+                wadbState is com.clawgui.ng.runtime.shizuku.wadb.WadbState.StartingShizuku ->
+                "配置中…"
+            else -> "尚未授权 — 任选一种方式即可"
+        }
+    }
+    val overallTone = when (activePath) {
+        ActivePath.None -> if (overallText == "配置中…") StatusTone.Warning else StatusTone.Error
+        else -> StatusTone.Ok
     }
 
     Column(
@@ -646,27 +707,398 @@ private fun ShizukuPage() {
             .padding(horizontal = 12.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        StatusCard(
-            label = "Shizuku 状态",
-            value = status.text,
-            tone = status.tone,
+        StatusCard(label = "设备控制状态", value = overallText, tone = overallTone)
+
+        if (activePath == ActivePath.None) {
+            InfoCard(
+                "ClawGUI 操作手机需要 ADB 级权限,两种方式 二选一:\n" +
+                    "• 无线调试 — 推荐 · 免电脑、手机本机一次性配对\n" +
+                    "• Shizuku — 你已经在用 Shizuku App 时直接复用\n" +
+                    "启用一种后,另一种会自动关闭。"
+            )
+        }
+
+        WirelessAdbCard(
+            wadb = wadb,
+            active = activePath == ActivePath.Wadb,
+            // 当前其它一方在用 → 折叠
+            collapsedBecauseOther = activePath == ActivePath.Shizuku,
+            // 点 "切换到此方式" 时若另一边在用,要弹确认框
+            onRequestSwitchHere = {
+                if (activePath == ActivePath.Shizuku) pendingSwitch = ActivePath.Wadb
+            },
         )
-        androidx.compose.material3.Button(
-            onClick = {
-                if (connecting) return@Button
-                scope.launch {
-                    connecting = true
-                    status = ShizukuStatusView("正在连接…", StatusTone.Warning)
-                    runCatching { RuntimeContainer.device.bindService() }
-                    pollShizukuReady(timeoutMs = 3000L)
-                    status = probeShizuku()
-                    connecting = false
+
+        ShizukuCard(
+            installed = shizukuInstalled.value,
+            bound = shizukuBound.value,
+            active = activePath == ActivePath.Shizuku,
+            collapsedBecauseOther = activePath == ActivePath.Wadb,
+            onRequestSwitchHere = {
+                if (activePath == ActivePath.Wadb) pendingSwitch = ActivePath.Shizuku
+            },
+            onRefresh = { refresh() },
+        )
+    }
+
+    // —— 切换确认弹窗 ——
+    pendingSwitch?.let { target ->
+        val (targetName, currentName) = when (target) {
+            ActivePath.Wadb -> "无线调试" to "Shizuku"
+            ActivePath.Shizuku -> "Shizuku" to "无线调试"
+            ActivePath.None -> return@let
+        }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { pendingSwitch = null },
+            title = { Text("切换到 $targetName?") },
+            text = {
+                Text(
+                    "目前 ClawGUI 通过 $currentName 控制设备。切换到 $targetName 会先断开 $currentName," +
+                        "然后再开始 $targetName 的配置。\n\n确定要切换吗?",
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    pendingSwitch = null
+                    scope.launch {
+                        when (target) {
+                            ActivePath.Wadb -> {
+                                // 断 Shizuku
+                                runCatching { RuntimeContainer.device.unbindService() }
+                                refresh()
+                                // wadb 不直接 connect(用户可能需要先在手机里打开开关),
+                                // 留在展开态让用户走 ① / ② / ③。
+                            }
+                            ActivePath.Shizuku -> {
+                                // 断 wadb
+                                runCatching {
+                                    com.clawgui.ng.runtime.shizuku.wadb.AdbManager.get(ctx).disconnectQuietly()
+                                }
+                                wadb.reset()
+                            }
+                            ActivePath.None -> {}
+                        }
+                    }
+                }) { Text("切换") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { pendingSwitch = null }) {
+                    Text("取消")
                 }
             },
-            enabled = !connecting,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (connecting) "正在连接…" else "绑定 Shizuku 服务 / 重新检测") }
-        InfoCard("Shizuku 让 ClawGUI 在不 root 的情况下完成屏幕控制。\n\n1. 安装并启动 Shizuku App\n2. 通过 ADB 或 root 方式开启 Shizuku 服务\n3. 回本页授予权限")
+        )
+    }
+}
+
+private enum class ActivePath { None, Wadb, Shizuku }
+
+/**
+ * 一张方式卡的统一外壳:折叠态显示 "已通过 XX 授权,无需配置 [切换到此方式]";
+ * 展开态由 [content] 自行渲染。生效时套绿色细边 + "当前生效" 角标。
+ */
+@Composable
+private fun AuthMethodCard(
+    title: String,
+    badge: String?,
+    active: Boolean,
+    /** 另一种方式正在使用 → 折叠成单行 + 切换按钮(点击触发确认弹窗) */
+    collapsedBecauseOther: Boolean,
+    collapsedMessage: String,
+    onRequestSwitchHere: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val borderColor = if (active) MaterialTheme.colorScheme.tertiary
+    else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (active) 1.5.dp else 1.dp,
+            color = borderColor,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f))
+                if (active) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                    ) {
+                        Text("当前生效",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+                    }
+                } else if (badge != null) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    ) {
+                        Text(badge,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+                    }
+                }
+            }
+
+            if (collapsedBecauseOther) {
+                Spacer(Modifier.height(8.dp))
+                Text(collapsedMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.material3.TextButton(
+                    onClick = onRequestSwitchHere,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 2.dp),
+                ) { Text("切换到此方式") }
+            } else {
+                Spacer(Modifier.height(12.dp))
+                content()
+            }
+        }
+    }
+}
+
+@Composable
+private fun WirelessAdbCard(
+    wadb: com.clawgui.ng.runtime.shizuku.wadb.WirelessAdb,
+    active: Boolean,
+    collapsedBecauseOther: Boolean,
+    onRequestSwitchHere: () -> Unit,
+) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val state by wadb.state.collectAsStateWithLifecycle()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var pairing by remember { mutableStateOf(false) }
+
+    val running = state is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Probing ||
+        state is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Pairing ||
+        state is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Connecting ||
+        state is com.clawgui.ng.runtime.shizuku.wadb.WadbState.StartingShizuku ||
+        state is com.clawgui.ng.runtime.shizuku.wadb.WadbState.WaitingForPairing
+
+    AuthMethodCard(
+        title = "无线调试",
+        badge = "推荐 · 无需电脑",
+        active = active,
+        collapsedBecauseOther = collapsedBecauseOther,
+        collapsedMessage = "当前由 Shizuku 控制设备。切换到无线调试会先断开 Shizuku。",
+        onRequestSwitchHere = onRequestSwitchHere,
+    ) {
+        // —— 子状态(只在展开时显示)——
+        val (stateText, stateTone) = when (val s = state) {
+            com.clawgui.ng.runtime.shizuku.wadb.WadbState.Idle -> "未启动" to StatusTone.Warning
+            com.clawgui.ng.runtime.shizuku.wadb.WadbState.Probing -> "正在发现端口…" to StatusTone.Warning
+            com.clawgui.ng.runtime.shizuku.wadb.WadbState.WirelessOff -> "无线调试未打开" to StatusTone.Warning
+            is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Pairing -> "正在配对 ${s.host}:${s.port}…" to StatusTone.Warning
+            is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Connecting -> "正在连接…" to StatusTone.Warning
+            is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Connected -> "已建立 ADB 连接 ✓" to StatusTone.Ok
+            is com.clawgui.ng.runtime.shizuku.wadb.WadbState.StartingShizuku -> "已连接 · 同时启动 Shizuku 中…" to StatusTone.Warning
+            is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Done -> "已就绪 ✓" to StatusTone.Ok
+            is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Error -> s.why to StatusTone.Error
+            is com.clawgui.ng.runtime.shizuku.wadb.WadbState.WaitingForPairing -> s.message to StatusTone.Warning
+        }
+
+        SubStatusRow(text = stateText, tone = stateTone)
+        Spacer(Modifier.height(10.dp))
+
+        if (active) {
+            // 已生效 — 只露 [重新配对][断开] 二级动作 + 折叠的详细说明
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { scope.launch { wadb.connectAndStart() } },
+                    enabled = !running,
+                    modifier = Modifier.weight(1f),
+                ) { Text("重新连接") }
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        scope.launch {
+                            com.clawgui.ng.runtime.shizuku.wadb.AdbManager.get(ctx).disconnectQuietly()
+                            wadb.reset()
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                ) { Text("断开此方式") }
+            }
+        } else {
+            androidx.compose.material3.Button(
+                onClick = {
+                    com.clawgui.ng.runtime.shizuku.wadb.WirelessAdb.openWirelessDebuggingSettings(ctx)
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("① 打开「无线调试」系统页") }
+
+            Spacer(Modifier.height(6.dp))
+            androidx.compose.material3.OutlinedButton(
+                onClick = { if (!running) scope.launch { wadb.connectAndStart() } },
+                enabled = !running,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("② 之前已配对过 — 直接连接") }
+
+            Spacer(Modifier.height(6.dp))
+            androidx.compose.material3.Button(
+                onClick = {
+                    if (!pairing) {
+                        pairing = true
+                        scope.launch {
+                            com.clawgui.ng.runtime.shizuku.wadb.WadbPairingNotifier
+                                .startPairingFlow(ctx)
+                            pairing = false
+                        }
+                    }
+                },
+                enabled = !pairing && !running,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("③ 开始配对(通过系统通知输码)") }
+
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "首次:打开总开关 → ③ 开始配对 → 系统页选「使用配对码配对设备」→ 下拉通知栏在 ClawGUI 通知里填 6 位码。\n" +
+                    "之后:②直连。需要手机与路由器同一 WiFi。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        // 调试日志(只在展开时露)
+        val log by wadb.log.collectAsStateWithLifecycle()
+        if (log.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(Modifier.padding(10.dp)) {
+                    log.takeLast(10).forEach { line ->
+                        Text(
+                            line,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShizukuCard(
+    installed: Boolean,
+    bound: Boolean,
+    active: Boolean,
+    collapsedBecauseOther: Boolean,
+    onRequestSwitchHere: () -> Unit,
+    onRefresh: () -> Unit,
+) {
+    var connecting by remember { mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+    AuthMethodCard(
+        title = "Shizuku",
+        badge = if (installed) "已检测到 App" else null,
+        active = active,
+        collapsedBecauseOther = collapsedBecauseOther,
+        collapsedMessage = "当前由无线调试控制设备。切换到 Shizuku 会先断开无线调试。",
+        onRequestSwitchHere = onRequestSwitchHere,
+    ) {
+        val subText = when {
+            bound -> "已绑定 ClawGUI ✓"
+            installed -> "Shizuku App 已装,但 ClawGUI 还没拿到授权"
+            else -> "未检测到 Shizuku App"
+        }
+        val subTone = when {
+            bound -> StatusTone.Ok
+            installed -> StatusTone.Warning
+            else -> StatusTone.Error
+        }
+        SubStatusRow(text = subText, tone = subTone)
+        Spacer(Modifier.height(10.dp))
+
+        if (active) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            connecting = true
+                            runCatching { RuntimeContainer.device.bindService() }
+                            pollShizukuReady(timeoutMs = 3000L)
+                            onRefresh()
+                            connecting = false
+                        }
+                    },
+                    enabled = !connecting,
+                    modifier = Modifier.weight(1f),
+                ) { Text(if (connecting) "检测中…" else "重新检测") }
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        runCatching { RuntimeContainer.device.unbindService() }
+                        onRefresh()
+                    },
+                    modifier = Modifier.weight(1f),
+                ) { Text("断开此方式") }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "彻底吊销授权请到 Shizuku App → 管理应用 → ClawGUI → 撤销。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            androidx.compose.material3.Button(
+                onClick = {
+                    if (connecting) return@Button
+                    scope.launch {
+                        connecting = true
+                        runCatching { RuntimeContainer.device.bindService() }
+                        pollShizukuReady(timeoutMs = 3000L)
+                        onRefresh()
+                        connecting = false
+                    }
+                },
+                enabled = !connecting,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(if (connecting) "正在连接…" else "绑定 Shizuku 服务 / 重新检测") }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "经典流程:1) 装并启动 Shizuku App  2) 用 ADB / 免 Root 启动其服务  3) 回来点上面按钮 → 在弹窗中授权。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** Small inline status line (dot + text), used inside method cards. */
+@Composable
+private fun SubStatusRow(text: String, tone: StatusTone) {
+    val color = when (tone) {
+        StatusTone.Ok -> MaterialTheme.colorScheme.tertiary
+        StatusTone.Warning -> MaterialTheme.colorScheme.primary
+        StatusTone.Error -> MaterialTheme.colorScheme.error
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = color)
     }
 }
 
@@ -720,22 +1152,6 @@ private fun ImePage() {
         ) { Text("重新检测状态") }
         InfoCard("Agent 操作手机时会自动把输入法切到 ClawGUI,完成后切回你的常用输入法。如果列表里看不到「ClawGUI Input」,先卸载重装本应用。")
     }
-}
-
-private data class ShizukuStatusView(val text: String, val tone: StatusTone)
-
-private fun probeShizuku(): ShizukuStatusView = try {
-    val device = RuntimeContainer.device
-    val installed = device.isShizukuAvailable()
-    val bound = device.isAvailable()
-    val level = runCatching { device.getShizukuPrivilegeLevel().name }.getOrNull()
-    when {
-        bound && level != null -> ShizukuStatusView("已连接 · $level", StatusTone.Ok)
-        installed -> ShizukuStatusView("已安装但未授权,点击下方按钮请求", StatusTone.Warning)
-        else -> ShizukuStatusView("未安装 / 服务未启动", StatusTone.Error)
-    }
-} catch (t: Throwable) {
-    ShizukuStatusView("不可用:${t.message ?: "unknown"}", StatusTone.Warning)
 }
 
 private fun probeIme(): String = runCatching {

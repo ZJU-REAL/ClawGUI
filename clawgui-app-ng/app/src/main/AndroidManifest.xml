@@ -94,5 +94,9 @@
                 android:resource="@xml/ime_method" />
         </service>
 
+        <receiver
+            android:name=".runtime.shizuku.wadb.PairingReceiver"
+            android:exported="false" />
+
     </application>
 </manifest>

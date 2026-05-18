@@ -18,14 +18,35 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    // Reuse the debug keystore for release so `./gradlew assembleRelease`
+    // produces a signed, installable APK without having to generate / commit a
+    // real keystore. Fine for local builds where we just want release-mode
+    // perf (no debuggable=true, R8-shrunk). DO NOT ship this to a store.
+    signingConfigs {
+        getByName("debug") {
+            // Android creates ~/.android/debug.keystore on first build — no setup needed.
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            isShrinkResources = false
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+    }
+
+    // Shizuku UserService is registered in the manifest but doesn't extend
+    // android.app.Service — that's how libshizuku does its UID-shell trick.
+    // Lint's `Instantiatable` check doesn't understand this and fails the
+    // release build; we disable lintVitalRelease entirely for local convenience.
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
     }
 
     compileOptions {
@@ -57,6 +78,9 @@ android {
             excludes += "META-INF/DEPENDENCIES"
             excludes += "META-INF/LICENSE"
             excludes += "META-INF/NOTICE"
+            // BouncyCastle jdk18on jars all carry these — keep only one copy
+            excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+            excludes += "META-INF/versions/**/OSGI-INF/**"
         }
     }
 }
@@ -101,6 +125,24 @@ dependencies {
     // Shizuku
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
+
+    // Wireless-debugging bootstrap (let ng start Shizuku server without USB ADB)
+    // libadb-android transitively pulls bcprov-jdk15to18 which collides with
+    // the jdk18on artifacts that actually expose `operator.jcajce.OperatorHelper`
+    // at runtime on Android. Force-exclude the legacy one, use jdk18on directly.
+    implementation("com.github.MuntashirAkon:libadb-android:3.1.1") {
+        exclude(group = "org.bouncycastle", module = "bcprov-jdk15to18")
+        exclude(group = "org.bouncycastle", module = "bcpkix-jdk15to18")
+        exclude(group = "org.bouncycastle", module = "bcutil-jdk15to18")
+    }
+    implementation("com.github.MuntashirAkon:sun-security-android:1.1")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.78.1")
+    // Bundled Conscrypt — Android 14+ stripped `Conscrypt.exportKeyingMaterial`
+    // off the system one, and libadb-android's SPAKE2-derived ADB session
+    // key absolutely needs it. Bringing our own Conscrypt fully owns the TLS
+    // stack and unblocks pairing. ~3 MB extra per ABI.
+    implementation("org.conscrypt:conscrypt-android:2.5.2")
 
     // Token counting / cron / Feishu — kept compatible with legacy runtime port
     implementation("com.knuddels:jtokkit:0.6.1")

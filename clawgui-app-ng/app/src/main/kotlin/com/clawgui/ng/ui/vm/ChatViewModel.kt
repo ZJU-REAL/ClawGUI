@@ -36,76 +36,11 @@ class ChatViewModel(
     private val sessions: SessionRepository = RuntimeContainer.sessions,
 ) : ViewModel() {
 
-    init {
-        // Wire up external (Feishu) inbound messages: summarise the session
-        // title once, then — if auto-reply is on — let Brain produce a reply,
-        // append it as ASSISTANT in the same session, and ship it back over
-        // the Feishu API.
-        viewModelScope.launch {
-            RuntimeContainer.feishuInbound.collect { ev ->
-                maybeAutoTitle(ev.sessionKey, ev.text)
-                if (RuntimeContainer.settings.feishuAutoReply.value) {
-                    answerFeishuInbound(ev)
-                }
-            }
-        }
-    }
-
-    private suspend fun answerFeishuInbound(ev: com.clawgui.ng.runtime.RuntimeContainer.FeishuInbound) {
-        val brainId = RuntimeContainer.settings.activeBrain.value
-        val cred = RuntimeContainer.settings.resolveCredentials(brainId) ?: return
-        if (cred.apiKey.isBlank()) return
-
-        // Placeholder assistant bubble in the session.
-        val placeholder = ChatMessage(
-            id = "msg_" + UUID.randomUUID().toString().take(8),
-            role = Role.ASSISTANT,
-            content = "",
-            streaming = true,
-        )
-        sessions.appendMessage(ev.sessionKey, placeholder)
-
-        val brain = com.clawgui.ng.runtime.llm.BrainRuntime(cred)
-        val history = sessions.messagesFor(ev.sessionKey).value.dropLast(1)
-        val system = "你是 ClawGUI,正在通过飞书与用户对话。简洁、礼貌、中文优先。"
-        val acc = StringBuilder()
-        try {
-            brain.streamReply(system, history).collect { evt ->
-                when (evt) {
-                    is com.clawgui.ng.runtime.llm.StreamEvent.Delta -> {
-                        acc.append(evt.text)
-                        val current = acc.toString()
-                        sessions.updateLastMessage(ev.sessionKey) { it.copy(content = current) }
-                    }
-                    is com.clawgui.ng.runtime.llm.StreamEvent.Done -> {
-                        sessions.updateLastMessage(ev.sessionKey) { it.copy(streaming = false) }
-                    }
-                    is com.clawgui.ng.runtime.llm.StreamEvent.Error -> {
-                        sessions.updateLastMessage(ev.sessionKey) {
-                            it.copy(content = "回复生成失败:${evt.message}", streaming = false, error = evt.message)
-                        }
-                    }
-                }
-            }
-        } catch (t: Throwable) {
-            sessions.updateLastMessage(ev.sessionKey) {
-                it.copy(content = "回复生成异常:${t.message}", streaming = false, error = t.message)
-            }
-            return
-        }
-
-        // Ship to Feishu — chatId = sessionKey 去掉 "feishu:" 前缀
-        val chatId = ev.sessionKey.removePrefix("feishu:")
-        val finalReply = acc.toString().trim()
-        if (finalReply.isNotBlank()) {
-            val err = RuntimeContainer.feishu.reply(chatId, finalReply, ev.messageId)
-            if (err != null) {
-                sessions.updateLastMessage(ev.sessionKey) {
-                    it.copy(error = "已生成但未送达:$err")
-                }
-            }
-        }
-    }
+    // NOTE: Feishu inbound routing (title summarisation + auto-reply) used to
+    // live here, but ChatViewModel is created/destroyed by the Compose nav
+    // stack — when 设置 is showing, Home() returns early and the VM is gone.
+    // That routing now lives in RuntimeContainer.observeFeishuInbound() so it
+    // runs at app scope regardless of which screen is visible.
 
     val currentSessionKey: StateFlow<String> = sessions.currentKey
 
@@ -170,11 +105,14 @@ class ChatViewModel(
 
     fun pickCard(card: PromptCard) { _draft.value = card.prompt }
 
-    /** Drop the last assistant reply and re-run it from the previous user turn. */
-    fun regenerateLast() {
+    /**
+     * Re-roll the assistant message with the given id (drops it + everything
+     * after, then re-runs the turn from the preceding user message).
+     */
+    fun regenerate(assistantMessageId: String) {
         if (_isExecuting.value) return
         val key = sessions.currentKey.value
-        val trigger = sessions.popLastAssistantTurn(key) ?: return
+        val trigger = sessions.truncateForRegenerate(key, assistantMessageId) ?: return
         val placeholder = ChatMessage(
             id = "msg_" + UUID.randomUUID().toString().take(8),
             role = Role.ASSISTANT,
@@ -287,33 +225,32 @@ class ChatViewModel(
      * agent's final message.
      */
     private suspend fun runPhoneAgent(key: String, task: String) {
-        // Shizuku gate — without it the agent cannot tap / type / screenshot.
+        // Device auth gate — either wireless-debug ADB OR Shizuku is enough.
+        // We never auto-bind here: the user picks the path in 设置 → 设备控制授权
+        // and any silent bind would flip the UI's "active" indicator behind
+        // their back.
         val device = RuntimeContainer.device
-        val shizukuInstalled = runCatching { device.isShizukuAvailable() }.getOrDefault(false)
-        val shizukuBound = runCatching { device.isAvailable() }.getOrDefault(false)
-        if (!shizukuBound) {
-            // Try to bind once before giving up — first launch is often just timing.
-            runCatching { device.bindService() }
-            kotlinx.coroutines.delay(800)
-        }
-        if (!runCatching { device.isAvailable() }.getOrDefault(false)) {
-            val msg = if (shizukuInstalled) {
-                "无法操作手机:**Shizuku 未授权**。\n\n" +
-                    "请到「设置 → Shizuku」点「绑定 Shizuku 服务」并允许授权,然后重新发送。"
-            } else {
-                "无法操作手机:**Shizuku 未安装**或服务未启动。\n\n" +
-                    "1. 安装并启动 Shizuku App\n" +
-                    "2. 通过 ADB 或免 ROOT 方式开启 Shizuku 服务\n" +
-                    "3. 回到 ClawGUI「设置 → Shizuku」授权"
-            }
+        val wadbReady = runCatching {
+            val s = com.clawgui.ng.runtime.shizuku.wadb.WirelessAdb
+                .get(RuntimeContainer.appContext).state.value
+            s is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Done ||
+                s is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Connected
+        }.getOrDefault(false)
+        val shizukuReady = runCatching { device.isAvailable() }.getOrDefault(false)
+
+        if (!shizukuReady && !wadbReady) {
+            val msg = "无法操作手机:尚未完成设备控制授权。\n\n" +
+                "请到「设置 → 设备控制授权」二选一完成:\n" +
+                "• 无线调试一键启动(推荐,免电脑):打开手机的开发者选项 → 无线调试 → 配对一次即可\n" +
+                "• Shizuku 模式:安装 Shizuku App,通过 ADB 或 Root 启动 Shizuku 服务后授权 ClawGUI"
             sessions.updateLastMessage(key) {
-                it.copy(content = msg, streaming = false, error = "shizuku not ready")
+                it.copy(content = msg, streaming = false, error = "device auth not ready")
             }
             RuntimeContainer.publishExecution(
                 ExecutionStatus(
                     state = ExecutionState.ERROR,
-                    title = "Shizuku 未就绪",
-                    subtitle = "请到设置授权后再试",
+                    title = "设备控制未授权",
+                    subtitle = "请到「设置 → 设备控制授权」完成任一方式",
                 )
             )
             return
@@ -517,6 +454,15 @@ class ChatViewModel(
                     subtitle = (finalMessage ?: "").take(80),
                 )
             )
+        }
+        // If invoked from a Feishu chat, ship the PhoneAgent's final summary
+        // back over the Feishu API so the original sender knows it's done.
+        if (key.startsWith("feishu:") && !finalMessage.isNullOrBlank()) {
+            val chatId = key.removePrefix("feishu:")
+            val lastMsgId = RuntimeContainer.inbox.lastMessageId(key)
+            runCatching {
+                RuntimeContainer.feishu.reply(chatId, finalMessage!!, lastMsgId)
+            }
         }
         // Bring ClawGUI to the foreground so the user is dropped back into the
         // chat with the result. The foreground service we acquired earlier

@@ -97,31 +97,38 @@ private fun Home() {
         scope.launch { drawerState.close() }
     }
 
-    if (showSettings) {
-        SettingsScreen(onClose = { showSettings = false })
-        return
-    }
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            SessionDrawer(
+    // Keep chat composed *underneath* settings instead of tearing it down +
+    // rebuilding it every time the user toggles between the two screens.
+    // The old `if (showSettings) { ...; return }` pattern unmounted the entire
+    // ChatScreen subtree (drawer, dynamic island, markdown messages, every
+    // `collectAsStateWithLifecycle`) on each transition — that's where the
+    // ~1s "open settings" delay came from.
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                SessionDrawer(
+                    vm = vm,
+                    onClose = { scope.launch { drawerState.close() } },
+                    onOpenSettings = { showSettings = true },
+                    onOpenInboxEntry = { entry ->
+                        vm.selectSession(entry.sessionKey)
+                        com.clawgui.ng.runtime.RuntimeContainer.inbox.markRead(entry.sessionKey)
+                    },
+                )
+            },
+        ) {
+            ChatScreen(
                 vm = vm,
-                onClose = { scope.launch { drawerState.close() } },
+                onOpenDrawer = { scope.launch { drawerState.open() } },
                 onOpenSettings = { showSettings = true },
-                onOpenInboxEntry = { entry ->
-                    vm.selectSession(entry.sessionKey)
-                    com.clawgui.ng.runtime.RuntimeContainer.inbox.markRead(entry.sessionKey)
-                },
+                onOpenModelPicker = { showModelSheet = true },
             )
-        },
-    ) {
-        ChatScreen(
-            vm = vm,
-            onOpenDrawer = { scope.launch { drawerState.open() } },
-            onOpenSettings = { showSettings = true },
-            onOpenModelPicker = { showModelSheet = true },
-        )
+        }
+
+        if (showSettings) {
+            SettingsScreen(onClose = { showSettings = false })
+        }
     }
 
     if (showModelSheet) {

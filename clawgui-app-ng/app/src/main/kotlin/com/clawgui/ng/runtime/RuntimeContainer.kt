@@ -75,6 +75,116 @@ object RuntimeContainer {
         }
         // Feishu lifecycle observer runs its own IO coroutine internally.
         observeFeishuLifecycle()
+        // Inbound Feishu messages drive title summarisation + (optional)
+        // auto-reply. This used to live inside ChatViewModel, but because the
+        // VM is created/destroyed by the Compose nav stack (Home() returns
+        // early before ChatViewModel exists when 设置 is visible), messages
+        // arriving while the user is on any settings page got dropped.
+        // Hoisting it to RuntimeContainer makes it app-scoped → always on.
+        observeFeishuInbound()
+    }
+
+    /** Sessions that already had their title auto-summarised — fires once each. */
+    private val titledSessions = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
+    private fun observeFeishuInbound() {
+        val scope = kotlinx.coroutines.CoroutineScope(
+            kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO
+        )
+        scope.launch {
+            feishuInbound.collect { ev ->
+                runCatching { maybeAutoTitleApp(ev.sessionKey, ev.text) }
+                if (settings.feishuAutoReply.value) {
+                    runCatching { answerFeishuInboundApp(ev) }
+                }
+            }
+        }
+    }
+
+    private suspend fun maybeAutoTitleApp(sessionKey: String, firstUserText: String) {
+        if (sessionKey in titledSessions) return
+        val current = sessions.sessions.value.firstOrNull { it.key == sessionKey }?.title.orEmpty()
+        if (current.isNotBlank() && current != "新对话" && current != "新建对话") return
+        titledSessions += sessionKey
+
+        val brainId = settings.activeBrain.value
+        val cred = settings.resolveCredentials(brainId) ?: return
+        if (cred.apiKey.isBlank()) return
+        runCatching {
+            val client = com.clawgui.ng.runtime.llm.OpenAICompatClient(
+                baseUrl = cred.baseUrl,
+                apiKey = cred.apiKey,
+                model = cred.model,
+            )
+            val reply = client.complete(listOf(
+                com.clawgui.ng.runtime.llm.Message(
+                    "system",
+                    "你的工作:用最多 15 个中文字概括用户的对话主题作为会话标题。" +
+                        "只输出标题文本,不带引号、不带标点、不带前缀。",
+                ),
+                com.clawgui.ng.runtime.llm.Message("user", firstUserText),
+            ))
+            val title = reply.trim()
+                .removeSurrounding("\"")
+                .removeSurrounding("「", "」")
+                .removeSurrounding("『", "』")
+                .lineSequence().firstOrNull()
+                .orEmpty()
+                .take(15)
+            if (title.isNotBlank()) sessions.rename(sessionKey, title)
+        }
+    }
+
+    private suspend fun answerFeishuInboundApp(ev: FeishuInbound) {
+        val brainId = settings.activeBrain.value
+        val cred = settings.resolveCredentials(brainId) ?: return
+        if (cred.apiKey.isBlank()) return
+
+        val placeholder = com.clawgui.ng.data.ChatMessage(
+            id = "msg_" + java.util.UUID.randomUUID().toString().take(8),
+            role = com.clawgui.ng.data.Role.ASSISTANT,
+            content = "",
+            streaming = true,
+        )
+        sessions.appendMessage(ev.sessionKey, placeholder)
+
+        val brain = com.clawgui.ng.runtime.llm.BrainRuntime(cred)
+        val history = sessions.messagesFor(ev.sessionKey).value.dropLast(1)
+        val system = "你是 ClawGUI,正在通过飞书与用户对话。简洁、礼貌、中文优先。"
+        val acc = StringBuilder()
+        try {
+            brain.streamReply(system, history).collect { evt ->
+                when (evt) {
+                    is com.clawgui.ng.runtime.llm.StreamEvent.Delta -> {
+                        acc.append(evt.text)
+                        val current = acc.toString()
+                        sessions.updateLastMessage(ev.sessionKey) { it.copy(content = current) }
+                    }
+                    is com.clawgui.ng.runtime.llm.StreamEvent.Done -> {
+                        sessions.updateLastMessage(ev.sessionKey) { it.copy(streaming = false) }
+                    }
+                    is com.clawgui.ng.runtime.llm.StreamEvent.Error -> {
+                        sessions.updateLastMessage(ev.sessionKey) {
+                            it.copy(content = "回复生成失败:${evt.message}", streaming = false, error = evt.message)
+                        }
+                    }
+                }
+            }
+        } catch (t: Throwable) {
+            sessions.updateLastMessage(ev.sessionKey) {
+                it.copy(content = "回复生成异常:${t.message}", streaming = false, error = t.message)
+            }
+            return
+        }
+
+        val chatId = ev.sessionKey.removePrefix("feishu:")
+        val finalReply = acc.toString().trim()
+        if (finalReply.isNotBlank()) {
+            val err = feishu.reply(chatId, finalReply, ev.messageId)
+            if (err != null) {
+                sessions.updateLastMessage(ev.sessionKey) { it.copy(error = "已生成但未送达:$err") }
+            }
+        }
     }
 
     private fun observeFeishuLifecycle() {

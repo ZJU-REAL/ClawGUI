@@ -110,7 +110,7 @@ fun ChatScreen(
                     items(messages, key = { it.id }) { msg ->
                         MessageBubble(
                             message = msg,
-                            onRegenerate = { vm.regenerateLast() },
+                            onRegenerate = { vm.regenerate(msg.id) },
                         )
                     }
                     item { Spacer(Modifier.height(12.dp)) }

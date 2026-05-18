@@ -111,6 +111,30 @@ class SessionRepository {
     /**
      * Replace the last message (used for streaming updates).
      */
+    /**
+     * Drop the assistant turn whose id is [assistantId], **and everything
+     * after it**. Returns the user message that triggered it (the latest
+     * USER message preceding the dropped assistant), or null if the id
+     * isn't an assistant or no triggering user exists.
+     *
+     * Used by "regenerate" so the user can re-roll any historical reply,
+     * not just the most recent one.
+     */
+    fun truncateForRegenerate(key: String, assistantId: String): ChatMessage? {
+        val store = messagesFor(key) as MutableStateFlow<List<ChatMessage>>
+        var triggerUser: ChatMessage? = null
+        store.update { list ->
+            val idx = list.indexOfFirst { it.id == assistantId }
+            if (idx < 0) return@update list
+            val target = list[idx]
+            if (target.role != com.clawgui.ng.data.Role.ASSISTANT) return@update list
+            val before = list.subList(0, idx)
+            triggerUser = before.lastOrNull { it.role == com.clawgui.ng.data.Role.USER }
+            before.toList()
+        }
+        return triggerUser
+    }
+
     /** Pop the trailing assistant turn (used for "regenerate"). Returns the
      *  user message that triggered it, or null if there isn't one. */
     fun popLastAssistantTurn(key: String): ChatMessage? {

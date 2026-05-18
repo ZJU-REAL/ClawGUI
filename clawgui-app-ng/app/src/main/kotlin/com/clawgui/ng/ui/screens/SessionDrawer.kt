@@ -110,9 +110,21 @@ fun SessionDrawer(
                 if (inbox.isEmpty()) {
                     item { EmptyInboxRow() }
                 } else {
-                    items(inbox, key = { it.sessionKey + ":" + it.receivedAt }) { e ->
+                    // Drawer 只显示最近 5 条;更多请到对话历史 / 收件箱页查看。
+                    val shown = inbox.take(5)
+                    items(shown, key = { it.sessionKey + ":" + it.receivedAt }) { e ->
                         InboxRow(e) {
                             onOpenInboxEntry(e); onClose()
+                        }
+                    }
+                    if (inbox.size > shown.size) {
+                        item {
+                            Text(
+                                "还有 ${inbox.size - shown.size} 条…",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            )
                         }
                     }
                 }

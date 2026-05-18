@@ -137,12 +137,32 @@ class DeviceController(private val context: Context? = null) : DeviceInterface {
     }
 
     override fun exec(command: String): String {
-        return try {
-            shellService?.exec(command) ?: execLocal(command)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            execLocal(command)
+        // 1) Shizuku shell service — preferred when bound (privileges already established).
+        runCatching { shellService?.exec(command) }.getOrNull()?.let { return it }
+
+        // 2) Wireless-debug ADB session — bridge to it when Shizuku isn't there.
+        //    `execShellBlocking` does synchronous I/O on the caller's thread,
+        //    so we MUST refuse to do it on the UI thread (would ANR while the
+        //    ADB stream drains). PhoneAgent runs on Dispatchers.IO so the
+        //    common case is fine; UI status probes get an empty string back
+        //    and degrade gracefully.
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            runCatching {
+                val appCtx = context ?: return@runCatching null
+                val wadb = com.clawgui.ng.runtime.shizuku.wadb.WirelessAdb.get(appCtx)
+                val state = wadb.state.value
+                val ready = state is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Done ||
+                    state is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Connected
+                if (ready) {
+                    com.clawgui.ng.runtime.shizuku.wadb.AdbManager
+                        .get(appCtx).execShellBlocking(command)
+                } else null
+            }.getOrNull()?.let { return it }
         }
+
+        // 3) Last resort — local sh (unprivileged, almost everything fails here
+        //    but keep behaviour for development).
+        return execLocal(command)
     }
 
     override fun tap(x: Int, y: Int) {
@@ -379,6 +399,20 @@ class DeviceController(private val context: Context? = null) : DeviceInterface {
      * Borrowed from roubao.
      */
     suspend fun screenshotWithFallback(): ScreenshotResult = withContext(Dispatchers.IO) {
+        // Path A — wireless-debug ADB session is up: pipe PNG bytes straight
+        // through the shell stream, no /data/local/tmp file involved (the
+        // app process can't read it under SELinux).
+        if (isWadbReady()) {
+            val bytes = runCatching { readScreencapViaAdbStream() }.getOrNull()
+            if (bytes != null && bytes.isNotEmpty()) {
+                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                if (bitmap != null) return@withContext ScreenshotResult(bitmap)
+            }
+            // Fall through to legacy path if the stream read failed.
+        }
+
+        // Path B — Shizuku shell service runs as shell UID, can write+read
+        // /data/local/tmp. This is the original implementation.
         try {
             val output = exec("screencap -p $SCREENSHOT_PATH && chmod 666 $SCREENSHOT_PATH")
             delay(500)
@@ -413,6 +447,85 @@ class DeviceController(private val context: Context? = null) : DeviceInterface {
             e.printStackTrace()
             createFallbackScreenshot(isSensitive = false)
         }
+    }
+
+    private fun isWadbReady(): Boolean = runCatching {
+        val ctx = context ?: return@runCatching false
+        val state = com.clawgui.ng.runtime.shizuku.wadb.WirelessAdb.get(ctx).state.value
+        state is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Done ||
+            state is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Connected
+    }.getOrDefault(false)
+
+    /**
+     * Stream raw PNG bytes out of `screencap -p` over the ADB shell socket.
+     * Avoids the /data/local/tmp file dance entirely, which is what makes
+     * the wadb path work without Shizuku-level UID privileges.
+     *
+     * Reads until either: end-of-stream from `screencap`, total payload
+     * stops growing for > 600ms (image done), or 15s hard cap.
+     */
+    private fun readScreencapViaAdbStream(): ByteArray {
+        val appCtx = context ?: return ByteArray(0)
+        val adb = com.clawgui.ng.runtime.shizuku.wadb.AdbManager.get(appCtx)
+        val stream = adb.javaClass
+            .getMethod("openStream", String::class.java)
+            .invoke(adb, "shell:screencap -p") as io.github.muntashirakon.adb.AdbStream
+        try {
+            val baos = java.io.ByteArrayOutputStream(2 * 1024 * 1024)
+            val buf = ByteArray(64 * 1024)
+            val deadline = System.currentTimeMillis() + 15_000L
+            var lastChunkAt = System.currentTimeMillis()
+            stream.openInputStream().use { ins ->
+                while (System.currentTimeMillis() < deadline) {
+                    val n = try { ins.read(buf) } catch (_: java.io.IOException) { -1 }
+                    if (n < 0) break
+                    if (n > 0) {
+                        baos.write(buf, 0, n)
+                        lastChunkAt = System.currentTimeMillis()
+                    } else if (System.currentTimeMillis() - lastChunkAt > 600L) {
+                        break
+                    }
+                }
+            }
+            val data = baos.toByteArray()
+            // Sanity: PNG magic = 89 50 4E 47
+            if (data.size >= 4 && data[0] == 0x89.toByte() && data[1] == 'P'.code.toByte() &&
+                data[2] == 'N'.code.toByte() && data[3] == 'G'.code.toByte()
+            ) {
+                return data
+            }
+            // Some ROMs send CRLF→LF translated by ADB — undo it.
+            val fixed = unCrlfPngBytes(data)
+            return fixed
+        } finally {
+            runCatching { stream.close() }
+        }
+    }
+
+    /**
+     * ADB `shell` protocol may translate `\r\n` to `\n` in transit on older
+     * connections. PNG payloads can contain literal `\r\n` so we restore
+     * them by inserting CR before every LF when the leading magic looks
+     * truncated. No-op on shell v2 / properly-typed transports.
+     */
+    private fun unCrlfPngBytes(data: ByteArray): ByteArray {
+        if (data.isEmpty()) return data
+        // Heuristic: detect "89 50" without the expected 4E 47 right after.
+        if (data.size < 8) return data
+        // Only attempt restoration when first 4 bytes match \x89PNG but
+        // payload is otherwise short or truncated.
+        if (data[0] != 0x89.toByte()) return data
+        val out = java.io.ByteArrayOutputStream(data.size + 64)
+        var i = 0
+        while (i < data.size) {
+            val b = data[i]
+            if (b == 0x0A.toByte() && (i == 0 || data[i - 1] != 0x0D.toByte())) {
+                out.write(0x0D)
+            }
+            out.write(b.toInt() and 0xFF)
+            i++
+        }
+        return out.toByteArray()
     }
 
     private fun createFallbackScreenshot(isSensitive: Boolean): ScreenshotResult {
