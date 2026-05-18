@@ -290,16 +290,115 @@ class ChatViewModel(
     }
 
     /**
+     * Generic two-stage preprocessing for image-bearing GUI tasks. Runs once
+     * before the PhoneAgent loop starts and returns an augmented task string.
+     *
+     * Stage A — Brain-side image understanding via [ImageInsight]. Best
+     * effort: on any failure the task still falls through, just without
+     * insights.
+     *
+     * Stage B — Publish each attachment to the system gallery
+     * ([MediaStoreExporter]) so the agent can pick them through the host
+     * app's normal photo picker (Moments composer, file picker, …).
+     *
+     * The augmented task text reaches the VLM as plain prompt — the VLM
+     * never sees the actual images.
+     */
+    private suspend fun preprocessAttachmentsForAgent(
+        originalTask: String,
+        attachments: List<com.clawgui.ng.data.Attachment>,
+        imagesBase64: List<String>,
+        cred: com.clawgui.ng.data.repo.ProviderCredentials,
+        progressKey: String,
+    ): String {
+        // Reflect progress in the chat bubble so the user knows what's happening
+        // while we wait on a VLM round-trip.
+        sessions.updateLastMessage(progressKey) {
+            it.copy(content = "正在读取图片内容…")
+        }
+        RuntimeContainer.publishExecution(
+            ExecutionStatus(state = ExecutionState.THINKING, title = "读取图片内容")
+        )
+
+        // — Stage A: Brain reads images.
+        val brainId = RuntimeContainer.settings.activeBrain.value
+        val brainCred = RuntimeContainer.settings.resolveCredentials(brainId)
+        val insightCred = com.clawgui.ng.runtime.llm.ImageInsight.pickVisionCreds(brainCred, cred)
+        val insight = if (insightCred != null) {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    com.clawgui.ng.runtime.llm.ImageInsight.analyse(
+                        creds = insightCred,
+                        userTask = originalTask,
+                        imagesBase64 = imagesBase64,
+                    )
+                }.getOrNull() ?: com.clawgui.ng.runtime.llm.ImageInsight.Result(emptyList(), "")
+            }
+        } else com.clawgui.ng.runtime.llm.ImageInsight.Result(emptyList(), "")
+
+        // — Stage B: Publish to gallery so any host app's picker can find them.
+        val exported: List<com.clawgui.ng.runtime.media.MediaStoreExporter.Exported> =
+            withContext(Dispatchers.IO) {
+                attachments.mapIndexedNotNull { idx, att ->
+                    com.clawgui.ng.runtime.media.MediaStoreExporter.exportToGallery(
+                        RuntimeContainer.appContext,
+                        java.io.File(att.uri),
+                        displayLabel = "clawgui_${idx + 1}",
+                    )
+                }
+            }
+
+        // — Compose augmented task text.
+        val sb = StringBuilder()
+        sb.append(originalTask.trim())
+        sb.append("\n\n# 任务上下文(由本机预处理生成)")
+        sb.append("\n- 用户已经把 ${attachments.size} 张图片放进了本机相册。")
+        if (exported.isNotEmpty()) {
+            sb.append("\n  路径:Pictures/ClawGUI/")
+            sb.append("\n  文件名:${exported.joinToString("、") { it.displayName }}")
+            sb.append("\n  也是相册里最新的 ${exported.size} 张照片(按拍摄时间倒序排在最前)。")
+        }
+        if (insight.perImageSummary.isNotEmpty()) {
+            sb.append("\n- 图片内容摘要(已由 Brain 看过,你看不到原图,只能基于这段文字):")
+            insight.perImageSummary.forEachIndexed { i, s ->
+                sb.append("\n    图${i + 1}: $s")
+            }
+        }
+        if (insight.extractable.isNotBlank()) {
+            sb.append("\n- 任务隐含需要的文字(若用户没另外指定,这就是你应当填入的内容):")
+            sb.append("\n    ").append(insight.extractable)
+        }
+        sb.append("\n\n继续按系统提示的格式执行任务。")
+        return sb.toString()
+    }
+
+    /**
      * Drive the PhoneAgent step-by-step. Each step's `<think>` and chosen
      * action are appended to the assistant message's `thinking` block (so the
      * user can expand it), and the dynamic island mirrors the same info.
      * The visible `content` is the running summary; on finish it becomes the
      * agent's final message.
      *
-     * [userImages] are base64-encoded JPEGs the user attached to the chat
-     * turn — passed straight through to the VLM on the first step.
+     * Attachments are **inputs to the task**, not VLM reference images. The
+     * VLM only ever sees the live phone screen — handing it the user's photos
+     * directly tends to stall vision-action models trained on a single-frame
+     * prompt (AutoGLM-Phone in particular). Instead:
+     *
+     *   1. Brain (or the Vision provider as fallback) summarises each image
+     *      and extracts whatever ready-to-use text the task implies (caption,
+     *      OCR, scanned URL, etc.) — see [ImageInsight].
+     *   2. The attachments are published into the system gallery via
+     *      [MediaStoreExporter] so the agent can pick them through whatever
+     *      app the task involves (Moments composer, file picker, etc.).
+     *   3. The original `task` string is augmented with the insight + the
+     *      list of exported filenames so the VLM operates on text alone.
+     *
+     * This keeps the design generic: post-to-Moments, send-via-WeChat,
+     * scan-QR, transcribe-menu and "describe this picture then act on it"
+     * all flow through the same pre-processing — no per-scenario branching.
      */
-    private suspend fun runPhoneAgent(key: String, task: String, userImages: List<String> = emptyList()) {
+    private suspend fun runPhoneAgent(key: String, taskInput: String, userImages: List<String> = emptyList()) {
+        var task = taskInput
         // Device auth gate — either wireless-debug ADB OR Shizuku is enough.
         // We never auto-bind here: the user picks the path in 设置 → 设备控制授权
         // and any silent bind would flip the UI's "active" indicator behind
@@ -351,6 +450,25 @@ class ChatViewModel(
                 subtitle = cred.model,
             )
         )
+
+        // ── Attachment pre-processing (only when user attached images) ──────
+        // Grab the actual Attachment entries from the chat message so we have
+        // both file paths (for gallery export) and base64 (for ImageInsight)
+        // — `userImages` from the caller only carries the base64 bytes.
+        val lastUserAtts = sessions.messagesFor(key).value
+            .lastOrNull { it.role == Role.USER }
+            ?.attachments
+            .orEmpty()
+            .filter { it.kind == com.clawgui.ng.data.AttachmentKind.IMAGE }
+        if (lastUserAtts.isNotEmpty()) {
+            task = preprocessAttachmentsForAgent(
+                originalTask = task,
+                attachments = lastUserAtts,
+                imagesBase64 = userImages,
+                cred = cred,
+                progressKey = key,
+            )
+        }
 
         // Promote the process to foreground so Android 14 doesn't throttle CPU
         // / network while the user is in another app. Without this, the agent
@@ -442,9 +560,12 @@ class ChatViewModel(
                 val step = try {
                     kotlinx.coroutines.withTimeout(5 * 60 * 1000L) {
                         withContext(Dispatchers.IO) {
+                            // VLM only sees the live screen — never the user's
+                            // input images. They've already been turned into
+                            // text context by preprocessAttachmentsForAgent.
                             when {
-                                stepIdx == 1 && isFollowUp -> agent.continueTask(task, userImages)
-                                stepIdx == 1 -> agent.step(task, userImages)
+                                stepIdx == 1 && isFollowUp -> agent.continueTask(task)
+                                stepIdx == 1 -> agent.step(task)
                                 else -> agent.step()
                             }
                         }
