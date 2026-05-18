@@ -10,7 +10,9 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
@@ -144,7 +146,7 @@ val LocalClawExtras = staticCompositionLocalOf { LightExtras }
 
 @Composable
 fun ClawNgTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = resolveDarkTheme(),
     content: @Composable () -> Unit,
 ) {
     val scheme = if (darkTheme) DarkScheme else LightScheme
@@ -182,6 +184,26 @@ fun ClawNgTheme(
 object ClawTheme {
     val extras: ClawExtraColors
         @Composable get() = LocalClawExtras.current
+}
+
+/**
+ * Map the user's Appearance preference to a darkTheme boolean. Falls back to
+ * the system setting in SYSTEM mode (and during early startup before
+ * RuntimeContainer.settings exists, so the first frame of the splash doesn't
+ * crash on init order).
+ */
+@Composable
+private fun resolveDarkTheme(): Boolean {
+    val systemDark = isSystemInDarkTheme()
+    val pref = runCatching {
+        com.clawgui.ng.runtime.RuntimeContainer.settings.appearance
+    }.getOrNull() ?: return systemDark
+    val mode by pref.collectAsStateWithLifecycle()
+    return when (mode) {
+        com.clawgui.ng.data.repo.Appearance.LIGHT -> false
+        com.clawgui.ng.data.repo.Appearance.DARK -> true
+        com.clawgui.ng.data.repo.Appearance.SYSTEM -> systemDark
+    }
 }
 
 /**
