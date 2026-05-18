@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ClawGUI</string>
+    <string name="ime_label">ClawGUI 输入法</string>
+
+    <string name="chat_input_hint">输入任务,或挑一张卡片…</string>
+    <string name="chat_send">发送</string>
+    <string name="chat_stop">停止</string>
+    <string name="chat_attach">附件</string>
+    <string name="chat_voice">语音</string>
+    <string name="chat_camera">拍照</string>
+    <string name="chat_model_switch">模型</string>
+    <string name="chat_new_session">新对话</string>
+    <string name="chat_thinking">思考中</string>
+    <string name="chat_show_thinking">展开思考</string>
+    <string name="chat_hide_thinking">收起思考</string>
+    <string name="chat_copy">复制</string>
+    <string name="chat_regenerate">重新生成</string>
+    <string name="chat_empty_title">你好,今天想做点什么?</string>
+    <string name="chat_empty_subtitle">挑张卡片快速开始,或者直接告诉我。</string>
+
+    <string name="drawer_search">搜索对话</string>
+    <string name="drawer_section_pinned">置顶</string>
+    <string name="drawer_section_recent">最近</string>
+    <string name="drawer_section_inbox">收件箱</string>
+    <string name="drawer_settings">设置</string>
+    <string name="drawer_new_chat">新建对话</string>
+    <string name="drawer_inbox">收件箱</string>
+    <string name="drawer_no_sessions">还没有对话</string>
+    <string name="drawer_rename">重命名</string>
+    <string name="drawer_delete">删除</string>
+    <string name="drawer_pin">置顶</string>
+    <string name="drawer_unpin">取消置顶</string>
+
+    <string name="settings_title">设置</string>
+    <string name="settings_ai_models">AI 模型</string>
+    <string name="settings_ai_models_desc">大脑与视觉模型、API Key</string>
+    <string name="settings_channels">外部通道</string>
+    <string name="settings_channels_desc">飞书等外部接入</string>
+    <string name="settings_shizuku">Shizuku</string>
+    <string name="settings_shizuku_desc">设备控制授权</string>
+    <string name="settings_ime">ClawGUI 输入法</string>
+    <string name="settings_ime_desc">允许 Agent 输入文字</string>
+    <string name="settings_traces">运行记录</string>
+    <string name="settings_traces_desc">保留每次执行轨迹</string>
+    <string name="settings_appearance">外观</string>
+    <string name="settings_appearance_desc">主题与强调色</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_about_desc">版本、协议、项目</string>
+
+    <string name="ok">确定</string>
+    <string name="cancel">取消</string>
+    <string name="confirm">确认</string>
+    <string name="close">关闭</string>
+    <string name="back">返回</string>
+    <string name="save">保存</string>
+    <string name="enable">启用</string>
+    <string name="disable">禁用</string>
+    <string name="connected">已连接</string>
+    <string name="disconnected">未连接</string>
+
+    <string name="onboarding_skip">跳过</string>
+    <string name="onboarding_next">下一步</string>
+    <string name="onboarding_done">开始使用</string>
+    <string name="onboarding_p1_title">认识 ClawGUI</string>
+    <string name="onboarding_p1_body">会思考、会动手的端侧 Agent,陪你玩转手机。</string>
+    <string name="onboarding_p2_title">由 Shizuku 驱动</string>
+    <string name="onboarding_p2_body">一次授权,无需 Root 即可操控 Android。</string>
+    <string name="onboarding_p3_title">全程掌控</string>
+    <string name="onboarding_p3_body">灵动岛实时显示每一步执行。</string>
+
+    <string name="overlay_running">正在执行</string>
+    <string name="overlay_done">执行完成</string>
+    <string name="overlay_error">遇到问题</string>
+    <string name="overlay_stopped">已停止</string>
+</resources>

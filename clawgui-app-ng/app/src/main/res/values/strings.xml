@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ClawGUI</string>
+    <string name="ime_label">ClawGUI Input</string>
+
+    <!-- Chat -->
+    <string name="chat_input_hint">Ask anything or pick a task…</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_stop">Stop</string>
+    <string name="chat_attach">Attach</string>
+    <string name="chat_voice">Voice</string>
+    <string name="chat_camera">Camera</string>
+    <string name="chat_model_switch">Model</string>
+    <string name="chat_new_session">New chat</string>
+    <string name="chat_thinking">Thinking</string>
+    <string name="chat_show_thinking">Show reasoning</string>
+    <string name="chat_hide_thinking">Hide reasoning</string>
+    <string name="chat_copy">Copy</string>
+    <string name="chat_regenerate">Regenerate</string>
+    <string name="chat_empty_title">Hi, what can I help with today?</string>
+    <string name="chat_empty_subtitle">Pick a card below or just type a task.</string>
+
+    <!-- Drawer -->
+    <string name="drawer_search">Search chats</string>
+    <string name="drawer_section_pinned">Pinned</string>
+    <string name="drawer_section_recent">Recent</string>
+    <string name="drawer_section_inbox">Inbox</string>
+    <string name="drawer_settings">Settings</string>
+    <string name="drawer_new_chat">New chat</string>
+    <string name="drawer_inbox">Inbox</string>
+    <string name="drawer_no_sessions">No conversations yet</string>
+    <string name="drawer_rename">Rename</string>
+    <string name="drawer_delete">Delete</string>
+    <string name="drawer_pin">Pin</string>
+    <string name="drawer_unpin">Unpin</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_ai_models">AI Models</string>
+    <string name="settings_ai_models_desc">Brain and Vision providers, API keys</string>
+    <string name="settings_channels">Channels</string>
+    <string name="settings_channels_desc">Feishu and other external bridges</string>
+    <string name="settings_shizuku">Shizuku</string>
+    <string name="settings_shizuku_desc">Device control privileges</string>
+    <string name="settings_ime">ClawGUI IME</string>
+    <string name="settings_ime_desc">Allow the agent to type</string>
+    <string name="settings_traces">Trace Recording</string>
+    <string name="settings_traces_desc">Save every run for replay</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_appearance_desc">Theme and accent</string>
+    <string name="settings_about">About</string>
+    <string name="settings_about_desc">Version, licenses, project</string>
+
+    <!-- Generic -->
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="confirm">Confirm</string>
+    <string name="close">Close</string>
+    <string name="back">Back</string>
+    <string name="save">Save</string>
+    <string name="enable">Enable</string>
+    <string name="disable">Disable</string>
+    <string name="connected">Connected</string>
+    <string name="disconnected">Disconnected</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_done">Get started</string>
+    <string name="onboarding_p1_title">Meet ClawGUI</string>
+    <string name="onboarding_p1_body">Your on-device agent that thinks and taps for you.</string>
+    <string name="onboarding_p2_title">Powered by Shizuku</string>
+    <string name="onboarding_p2_body">Grant Shizuku once — we drive Android without root.</string>
+    <string name="onboarding_p3_title">You\'re in control</string>
+    <string name="onboarding_p3_body">Watch every step from the dynamic island.</string>
+
+    <!-- Overlay -->
+    <string name="overlay_running">Working on it</string>
+    <string name="overlay_done">All done</string>
+    <string name="overlay_error">Something went wrong</string>
+    <string name="overlay_stopped">Stopped</string>
+</resources>

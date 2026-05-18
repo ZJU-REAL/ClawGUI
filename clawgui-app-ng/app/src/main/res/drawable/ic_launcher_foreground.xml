@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Subtle white highlight ring for depth -->
+    <path
+        android:fillColor="#1AFFFFFF"
+        android:pathData="M54,24
+                          a30,30 0 1,0 0,60
+                          a30,30 0 1,0 0,-60
+                          z" />
+    <!-- Clean C-mark on ZJU blue -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,30
+                          a24,24 0 1,0 0,48
+                          a24,24 0 1,0 0,-48
+                          z
+                          M54,40
+                          a14,14 0 1,1 0,28
+                          l0,-6
+                          a8,8 0 1,0 0,-16
+                          z" />
+</vector>
