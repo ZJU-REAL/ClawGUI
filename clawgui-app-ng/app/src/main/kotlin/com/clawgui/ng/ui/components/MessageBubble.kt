@@ -164,6 +164,13 @@ private fun AssistantBubble(
                 ThinkingPanel(m.thinking, streaming = m.streaming && m.content.isBlank())
                 Spacer(Modifier.height(6.dp))
             }
+            // Structured plan (PhoneAgent only) sits between the thinking
+            // panel and the main reply bubble so the user can watch it
+            // update in-place while the agent runs.
+            m.plan?.takeIf { it.items.isNotEmpty() }?.let { plan ->
+                PlanCard(plan)
+                Spacer(Modifier.height(6.dp))
+            }
             Surface(
                 shape = ClawCorners.bubbleAssistant,
                 color = extras.assistantBubble,

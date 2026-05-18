@@ -18,7 +18,42 @@ data class ChatMessage(
     val error: String? = null,
     /** 紧跟本条 assistant 回复的建议追问,只在最后一条 assistant 消息下方渲染。 */
     val followUps: List<FollowUp> = emptyList(),
+    /** PhoneAgent 制定的多步骤计划。null = 该消息没有计划(普通对话);
+     *  非 null 时 UI 会在 bubble 里渲染计划卡。状态变化时整张 Plan 替换。 */
+    val plan: Plan? = null,
 )
+
+@Serializable
+data class Plan(
+    val items: List<PlanItem>,
+    /** 当前推进项的 id,UI 用来高亮 + 脉冲;null = 全部未开始或全部结束。 */
+    val activeItemId: String? = null,
+) {
+    val doneCount: Int get() = items.count { it.status == PlanItemStatus.DONE }
+    val totalCount: Int get() = items.size
+}
+
+@Serializable
+data class PlanItem(
+    val id: String,
+    val title: String,
+    val detail: String? = null,
+    val status: PlanItemStatus = PlanItemStatus.PENDING,
+    /** 完成 / 失败 / 跳过的原因。显示在 item 下方一行小字。 */
+    val note: String? = null,
+    /** 哪一步把这个 item 变到当前状态 — 用来排"最新变更"动画。 */
+    val updatedAtStep: Int = 0,
+)
+
+@Serializable
+enum class PlanItemStatus {
+    PENDING,        // 还没轮到
+    IN_PROGRESS,    // 正在做
+    DONE,           // 完成
+    SKIPPED,        // 跳过(用户改主意 / 不需要做 / 别的步骤已经达成)
+    FAILED,         // 失败(明确知道做不到,note 写原因)
+    BLOCKED,        // 卡住等用户(Ask / Take_over / 等回复)
+}
 
 @Serializable
 data class FollowUp(

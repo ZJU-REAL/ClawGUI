@@ -580,6 +580,11 @@ class ChatViewModel(
         } else null
 
         val thinkingLog = StringBuilder()
+        // Running plan: mutated by each step's PlanProtocol ops, then snapshot
+        // into the assistant message so the chat UI renders it live. Starts
+        // null and stays null if the model never emits an `<plan>` block —
+        // chat falls back to plain-text bubble + thinking panel only.
+        var runningPlan: com.clawgui.ng.data.Plan? = null
         // No hard cap — agent runs until it finishes, you stop it, or stuck-detection bails.
         var finalMessage: String? = null
         var stepIdx = 0
@@ -622,10 +627,19 @@ class ChatViewModel(
                 if (thinkingLog.isNotEmpty()) thinkingLog.append("\n\n")
                 thinkingLog.append(thoughtBlock)
 
+                // Apply this step's plan ops if any. Best-effort: malformed
+                // JSON / missing block ⇒ plan stays as it was.
+                runningPlan = com.clawgui.ng.runtime.phone.PlanProtocol.apply(
+                    previous = runningPlan,
+                    body = step.planOps,
+                    stepIndex = stepIdx,
+                )
+
                 sessions.updateLastMessage(key) {
                     it.copy(
                         content = "正在执行第 $stepIdx 步:$actionName${if (actionExtra.isNotBlank()) " · $actionExtra" else ""}",
                         thinking = thinkingLog.toString(),
+                        plan = runningPlan,
                     )
                 }
                 RuntimeContainer.publishExecution(
@@ -716,7 +730,12 @@ class ChatViewModel(
         }
 
         sessions.updateLastMessage(key) {
-            it.copy(content = finalMessage ?: "任务结束", thinking = thinkingLog.toString(), streaming = false)
+            it.copy(
+                content = finalMessage ?: "任务结束",
+                thinking = thinkingLog.toString(),
+                plan = runningPlan,
+                streaming = false,
+            )
         }
         if (RuntimeContainer.executionStatus.value.state != ExecutionState.ERROR) {
             RuntimeContainer.publishExecution(

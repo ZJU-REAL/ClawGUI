@@ -26,6 +26,10 @@ data class StepResult(
     val action: Map<String, Any?>,
     val thinking: String,
     val message: String? = null,
+    /** Raw JSON body of the `<plan>` block this step emitted (null if absent).
+     *  ChatViewModel hands it to [PlanProtocol.apply] to advance the
+     *  decorative plan card shown in the chat bubble. */
+    val planOps: String? = null,
 )
 
 class PhoneAgent(
@@ -163,17 +167,26 @@ class PhoneAgent(
     ): StepResult {
         stepCount++
 
-        val screenshotBytes = device.screenshot()
-        val compressed = screenshotBytes?.let { raw ->
-            val q = try {
-                com.clawgui.ng.runtime.RuntimeContainer.settings.screenshotQuality.value
-            } catch (_: Throwable) {
-                com.clawgui.ng.runtime.phone.util.ScreenshotCompressor.Quality.MEDIUM
+        // Step 1 is pure planning — no screen actions yet, so we skip the
+        // screenshot entirely. Saves a slow Shizuku / wadb roundtrip on the
+        // first turn AND prevents the model from being distracted by
+        // ClawGUI's own UI (which it would otherwise try to describe / poke
+        // at). From step 2 onwards we're inside the target app, so we
+        // resume normal capture.
+        val compressed: ByteArray? = if (isFirst) null else {
+            val screenshotBytes = device.screenshot()
+            screenshotBytes?.let { raw ->
+                val q = try {
+                    com.clawgui.ng.runtime.RuntimeContainer.settings.screenshotQuality.value
+                } catch (_: Throwable) {
+                    com.clawgui.ng.runtime.phone.util.ScreenshotCompressor.Quality.MEDIUM
+                }
+                com.clawgui.ng.runtime.phone.util.ScreenshotCompressor.compress(raw, q)
             }
-            com.clawgui.ng.runtime.phone.util.ScreenshotCompressor.compress(raw, q)
         }
         val imageBase64 = compressed?.let { Base64.getEncoder().encodeToString(it) } ?: ""
-        val currentApp = try { device.exec("dumpsys activity activities | grep mResumedActivity | head -1").trim() } catch (_: Exception) { "unknown" }
+        val currentApp = if (isFirst) "(尚未启动目标 App)" else
+            try { device.exec("dumpsys activity activities | grep mResumedActivity | head -1").trim() } catch (_: Exception) { "unknown" }
 
         val messages = modelClient.adapter.buildMessages(
             task = userPrompt ?: currentTask,
@@ -193,7 +206,11 @@ class PhoneAgent(
             return StepResult(success = false, finished = true, action = mapOf("_metadata" to "finish"), thinking = "", message = "Model error: ${e.message}")
         }
 
-        val thinking = response.thinking
+        // Plan ops live in a separate `<plan>...</plan>` block. Extract them
+        // off the raw response *before* we strip them out of `thinking` so
+        // the action parser doesn't see them.
+        val planOps = PlanProtocol.extract(response.rawContent)
+        val thinking = PlanProtocol.stripBlock(response.thinking)
         val actionStr = response.action
 
         val action = try {
@@ -251,6 +268,7 @@ class PhoneAgent(
                 action = mapOf("_metadata" to "finish", "message" to stuckReason),
                 thinking = thinking,
                 message = stuckReason,
+                planOps = planOps,
             )
         }
 
@@ -262,6 +280,7 @@ class PhoneAgent(
             action = action,
             thinking = thinking,
             message = actionResult.message ?: action["message"] as? String,
+            planOps = planOps,
         )
     }
 
