@@ -66,13 +66,35 @@ object ActionParser {
             } catch (_: Exception) {}
         }
 
+        // Drop any natural-language prefix the model put before the actual
+        // command. Models occasionally prepend "执行操作:" / "Launch 微信:"
+        // even though the prompt says no — strip everything before the
+        // first `do(` / `finish(` token so the dispatch below works.
+        // We use the *first* token here (not last) because <answer> blocks
+        // generally hold exactly one command and any later `do(` would be
+        // weird; the parser-level lastIndexOf trick lives in
+        // AutoGLMAdapter.parseResponse, which has the broader response
+        // context to disambiguate.
+        run {
+            val doIdx = s.indexOf("do(")
+            val finIdx = s.indexOf("finish(")
+            val firstCmd = when {
+                doIdx < 0 -> finIdx
+                finIdx < 0 -> doIdx
+                else -> minOf(doIdx, finIdx)
+            }
+            if (firstCmd > 0) s = s.substring(firstCmd)
+        }
+
         // 3. Type / Type_Name (special regex path to handle complex text)
-        if (s.startsWith("do(action=\"Type\"") || s.startsWith("do(action=\"Type_Name\"")) {
+        if (s.startsWith("do(action=\"Type\"") || s.startsWith("do(action=\"Type_Name\"") ||
+            s.startsWith("do(action='Type'") || s.startsWith("do(action='Type_Name'")
+        ) {
             TEXT_MATCH_RE.find(s)?.let { m ->
                 val text = m.groupValues[2]
                     .replace("\\\"", "\"").replace("\\'", "'")
                     .replace("\\n", "\n").replace("\\t", "\t")
-                val actionType = if ("action=\"Type_Name\"" in s) "Type_Name" else "Type"
+                val actionType = if ("Type_Name" in s) "Type_Name" else "Type"
                 return mapOf("_metadata" to "do", "action" to actionType, "text" to text)
             }
         }

@@ -65,6 +65,7 @@ class PhoneAgent(
     private val recentActions: ArrayDeque<String> = ArrayDeque()
     private var consecutiveFailures = 0
     private var consecutiveWaits = 0
+    private var consecutiveParseFailures = 0
 
     /**
      * Run a task to completion. [userImages] is an optional list of base64-
@@ -80,6 +81,7 @@ class PhoneAgent(
         recentActions.clear()
         consecutiveFailures = 0
         consecutiveWaits = 0
+        consecutiveParseFailures = 0
         currentTask = task
         modelClient.adapter.clearHistory()
 
@@ -119,6 +121,7 @@ class PhoneAgent(
         recentActions.clear()
         consecutiveFailures = 0
         consecutiveWaits = 0
+        consecutiveParseFailures = 0
         // Append the follow-up as a fresh user turn so adapters that key off
         // the last user message (AutoGLM, Qwen-VL, etc.) re-anchor on it.
         // Note we do NOT inline userImages here — executeStep's buildMessages
@@ -137,6 +140,7 @@ class PhoneAgent(
         recentActions.clear()
         consecutiveFailures = 0
         consecutiveWaits = 0
+        consecutiveParseFailures = 0
         modelClient.adapter.clearHistory()
     }
 
@@ -213,10 +217,34 @@ class PhoneAgent(
         val thinking = PlanProtocol.stripBlock(response.thinking)
         val actionStr = response.action
 
+        // Parse failure recovery: don't immediately finish — give the model
+        // one more shot by surfacing the error as a system feedback message
+        // and forcing a no-op Wait so the loop spins one more step. Bail
+        // only if two parses fail back-to-back; otherwise transient model
+        // formatting glitches end every long task at step 1.
         val action = try {
-            ActionParser.parse(actionStr)
-        } catch (_: Exception) {
-            mapOf("_metadata" to "finish", "message" to actionStr)
+            val parsed = ActionParser.parse(actionStr)
+            consecutiveParseFailures = 0
+            parsed
+        } catch (e: Exception) {
+            consecutiveParseFailures++
+            if (consecutiveParseFailures >= 2) {
+                mapOf(
+                    "_metadata" to "finish",
+                    "message" to "连续 2 步无法解析模型输出。最近一次原文:${actionStr.take(200)}",
+                )
+            } else {
+                // Tell the model what went wrong via a synthetic system
+                // turn injected later (look for the surface message below);
+                // for this step we emit a 1-second Wait so the loop
+                // continues and the model can retry.
+                context.add(mapOf(
+                    "role" to "system",
+                    "content" to "上一步 `<answer>` 解析失败:${e.message ?: "格式不对"}。请重新按规定输出三块,`<answer>` 里只能是一行合法的 `do(action=\"...\", ...)` 或 `finish(message=\"...\")`,不要加任何前缀或解释。",
+                ))
+                modelClient.adapter.addHistory("[解析失败] 重写 <answer>")
+                mapOf("_metadata" to "do", "action" to "Wait", "duration" to "1 seconds")
+            }
         }
 
         // Remove image from last user message to save context
