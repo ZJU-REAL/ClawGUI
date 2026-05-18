@@ -61,10 +61,17 @@ import com.clawgui.ng.ui.theme.ClawTheme
 fun MessageBubble(
     message: ChatMessage,
     onRegenerate: () -> Unit,
+    showFollowUps: Boolean = false,
+    onPickFollowUp: (String) -> Unit = {},
 ) {
     when (message.role) {
         Role.USER -> UserBubble(message)
-        Role.ASSISTANT -> AssistantBubble(message, onRegenerate)
+        Role.ASSISTANT -> AssistantBubble(
+            m = message,
+            onRegenerate = onRegenerate,
+            showFollowUps = showFollowUps,
+            onPickFollowUp = onPickFollowUp,
+        )
         Role.SYSTEM, Role.TOOL -> SystemNote(message)
     }
 }
@@ -122,7 +129,12 @@ private fun UserBubble(m: ChatMessage) {
 }
 
 @Composable
-private fun AssistantBubble(m: ChatMessage, onRegenerate: () -> Unit) {
+private fun AssistantBubble(
+    m: ChatMessage,
+    onRegenerate: () -> Unit,
+    showFollowUps: Boolean,
+    onPickFollowUp: (String) -> Unit,
+) {
     val extras = ClawTheme.extras
     Row(
         Modifier.fillMaxWidth().padding(start = 16.dp, end = 56.dp, top = 6.dp, bottom = 10.dp),
@@ -170,7 +182,49 @@ private fun AssistantBubble(m: ChatMessage, onRegenerate: () -> Unit) {
                     ActionChip(icon = Icons.Rounded.Refresh, label = "重新生成", onClick = onRegenerate)
                 }
             }
+            // Follow-up suggestions sit below the regenerate row and only
+            // render on the latest assistant turn — older messages keep
+            // their chips invisible so scrolling back doesn't get noisy.
+            if (showFollowUps && !m.streaming && m.followUps.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                FollowUpChipsRow(
+                    items = m.followUps,
+                    onPick = onPickFollowUp,
+                )
+            }
         }
+    }
+}
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun FollowUpChipsRow(
+    items: List<com.clawgui.ng.data.FollowUp>,
+    onPick: (String) -> Unit,
+) {
+    androidx.compose.foundation.layout.FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        items.forEach { fu ->
+            FollowUpChip(label = fu.label, onClick = { onPick(fu.prompt) })
+        }
+    }
+}
+
+@Composable
+private fun FollowUpChip(label: String, onClick: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+        modifier = Modifier.clickable(onClick = onClick),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        )
     }
 }
 

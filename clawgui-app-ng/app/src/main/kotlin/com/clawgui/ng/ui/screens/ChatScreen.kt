@@ -113,6 +113,11 @@ fun ChatScreen(
             if (messages.isEmpty()) {
                 EmptyDiscoverState(onPick = vm::pickCard)
             } else {
+                // Only the last assistant message gets follow-up chips; older
+                // bubbles staying chip-free keeps the chat clean as you scroll up.
+                val latestAssistantId = messages.lastOrNull {
+                    it.role == com.clawgui.ng.data.Role.ASSISTANT
+                }?.id
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
@@ -123,6 +128,8 @@ fun ChatScreen(
                         MessageBubble(
                             message = msg,
                             onRegenerate = { vm.regenerate(msg.id) },
+                            showFollowUps = msg.id == latestAssistantId,
+                            onPickFollowUp = vm::pickFollowUp,
                         )
                     }
                     item { Spacer(Modifier.height(12.dp)) }

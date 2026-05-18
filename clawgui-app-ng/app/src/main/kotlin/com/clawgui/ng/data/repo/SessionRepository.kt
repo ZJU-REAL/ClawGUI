@@ -158,6 +158,14 @@ class SessionRepository {
         }
     }
 
+    /** Patch a specific message by id — used by async tasks (follow-up
+     *  suggestion generation) that may finish after another message has
+     *  already been appended. No-op if the id is gone. */
+    fun updateMessageById(key: String, id: String, transform: (ChatMessage) -> ChatMessage) {
+        val store = messagesFor(key) as MutableStateFlow<List<ChatMessage>>
+        store.update { list -> list.map { if (it.id == id) transform(it) else it } }
+    }
+
     private fun seedSessions(): List<SessionSummary> {
         // Start with one empty session so the user lands on the discover-cards
         // page on first launch — same surface they get when tapping "新对话".

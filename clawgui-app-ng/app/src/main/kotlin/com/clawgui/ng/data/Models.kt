@@ -16,6 +16,16 @@ data class ChatMessage(
     val createdAt: Long = System.currentTimeMillis(),
     val streaming: Boolean = false,
     val error: String? = null,
+    /** 紧跟本条 assistant 回复的建议追问,只在最后一条 assistant 消息下方渲染。 */
+    val followUps: List<FollowUp> = emptyList(),
+)
+
+@Serializable
+data class FollowUp(
+    /** Short chip label shown to the user (≤12 chars). */
+    val label: String,
+    /** Full text dropped into the draft input when the chip is tapped. */
+    val prompt: String,
 )
 
 @Serializable

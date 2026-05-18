@@ -278,6 +278,42 @@ class ChatViewModel(
         }
     }
 
+    /**
+     * Drop a follow-up's full prompt text into the input box. Doesn't auto-send
+     * — the user reviews / edits first. Tapped from the chip strip rendered
+     * under the most recent assistant message.
+     */
+    fun pickFollowUp(prompt: String) {
+        _draft.value = prompt
+    }
+
+    /**
+     * Kick a best-effort follow-up-suggestion generation after an assistant
+     * turn lands. Non-blocking, runs on the VM scope. Failures are silent —
+     * if it doesn't return anything the chip row simply doesn't render.
+     *
+     * Captures the current last-assistant message id so a race against the
+     * next user turn can't mis-patch a different message.
+     */
+    private fun scheduleFollowUps(key: String) {
+        val targetId = sessions.messagesFor(key).value
+            .lastOrNull { it.role == Role.ASSISTANT }
+            ?.id ?: return
+        viewModelScope.launch {
+            val brainId = RuntimeContainer.settings.activeBrain.value
+            val cred = RuntimeContainer.settings.resolveCredentials(brainId) ?: return@launch
+            val history = sessions.messagesFor(key).value
+            val suggestions = withContext(Dispatchers.IO) {
+                runCatching {
+                    com.clawgui.ng.runtime.llm.FollowUpGenerator.generate(cred, history)
+                }.getOrNull().orEmpty()
+            }
+            if (suggestions.isNotEmpty()) {
+                sessions.updateMessageById(key, targetId) { it.copy(followUps = suggestions) }
+            }
+        }
+    }
+
     private suspend fun encodeAttachmentsForVlm(
         atts: List<com.clawgui.ng.data.Attachment>,
     ): List<String> = withContext(Dispatchers.IO) {
@@ -651,6 +687,7 @@ class ChatViewModel(
                 )
             )
         }
+        scheduleFollowUps(key)
         // If invoked from a Feishu chat, ship the PhoneAgent's final summary
         // back over the Feishu API so the original sender knows it's done.
         if (key.startsWith("feishu:") && !finalMessage.isNullOrBlank()) {
@@ -807,6 +844,7 @@ class ChatViewModel(
                         RuntimeContainer.publishExecution(
                             ExecutionStatus(state = ExecutionState.DONE, title = "执行完成")
                         )
+                        scheduleFollowUps(key)
                     }
                     is StreamEvent.Error -> {
                         sessions.updateLastMessage(key) {
