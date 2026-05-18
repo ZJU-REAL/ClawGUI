@@ -64,20 +64,31 @@ object AutoGLMAdapter : ModelAdapter {
     override val name: String = "autoglm"
 
     override fun parseResponse(response: String): Pair<String, String> {
-        if ("finish(message=" in response) {
-            val parts = response.split("finish(message=", limit = 2)
-            return parts[0].trim() to "finish(message=${parts[1]}"
-        }
-        if ("do(action=" in response) {
-            val parts = response.split("do(action=", limit = 2)
-            return parts[0].trim() to "do(action=${parts[1]}"
-        }
+        // The XML-style structured form is the contract — try it first.
+        // Splitting on bare `do(action=` / `finish(message=` would otherwise
+        // grab the *first* occurrence anywhere in the response, including
+        // the examples the model quotes inside <think>. That made the
+        // parser silently turn most reasoning into a malformed action and
+        // bail with finish() on step 1.
         if ("<answer>" in response) {
             val parts = response.split("<answer>", limit = 2)
             val thinking = parts[0]
                 .replace("<think>", "").replace("</think>", "").trim()
             val action = parts[1].replace("</answer>", "").trim()
             return thinking to action
+        }
+        // Fallbacks for models that drop the XML wrappers entirely. Use the
+        // *last* occurrence so any examples quoted in the reasoning lead-in
+        // don't get mistaken for the chosen action.
+        val finishIdx = response.lastIndexOf("finish(message=")
+        if (finishIdx >= 0) {
+            return response.substring(0, finishIdx).trim() to
+                response.substring(finishIdx)
+        }
+        val doIdx = response.lastIndexOf("do(action=")
+        if (doIdx >= 0) {
+            return response.substring(0, doIdx).trim() to
+                response.substring(doIdx)
         }
         return "" to response
     }
@@ -103,13 +114,25 @@ object AutoGLMAdapter : ModelAdapter {
                 $refHint
                 这一步只做规划:理解任务、拆步骤、选第一个动作。
 
+                **必须按顺序输出三个块**:`<think>...</think>` → `<plan>{"ops":[...]}</plan>` → `<answer>...</answer>`。
+
                 `<think>` 必须包含:
                   第 0 节 任务规约 4 行:目标 / 终止条件 / 禁止条件 / 角色。
                   第 3 节 完整计划(用列表写)。
                   第 4 节 进度:`已完成 0/N`。
                   其余小节按系统提示走。
 
-                `<plan>` **必须**包含一个 `op: "init"` 把整个计划列出来,并且把第 1 项标为 `IN_PROGRESS`。计划步数自己定,足够覆盖任务即可。
+                `<plan>` 必须有一个 `op: "init"` 把整个计划列出来,并且至少一个 `op: "update"` 把第 1 项标为 `IN_PROGRESS`。例子:
+                ```
+                <plan>{"ops":[
+                  {"op":"init","items":[
+                    {"id":"open_wx","title":"打开微信"},
+                    {"id":"search","title":"搜索张三"},
+                    {"id":"send","title":"发送消息"}
+                  ]},
+                  {"op":"update","id":"open_wx","status":"IN_PROGRESS"}
+                ]}</plan>
+                ```
 
                 `<answer>` 只能是下列之一:
                   - `do(action="Launch", app="目标App名")` — 绝大多数任务
@@ -125,7 +148,10 @@ object AutoGLMAdapter : ModelAdapter {
                 ** 当前屏幕(第 $stepIndex 步)**
                 $screenInfo
 
-                请按系统提示的格式继续。`<think>` 第 0 节"任务规约"照抄首步写过的 4 行,第 1 节用规约里的 Done When 严格判断是否真的命中。
+                请按格式输出三个块:`<think>...</think>` → `<plan>{"ops":[...]}</plan>` → `<answer>...</answer>`。
+                - `<think>` 第 0 节"任务规约"照抄首步写过的 4 行,第 1 节用规约里的 Done When 严格判断是否真的命中。
+                - `<plan>` 至少一个 `update`,把刚做完的 item 标 `DONE`、把下一个 item 标 `IN_PROGRESS`。
+                - `<answer>` 一条指令。
             """.trimIndent()
             // Subsequent steps: never re-ship the user-ref images (they're
             // already preserved in context by removeImagesFromMessage's
