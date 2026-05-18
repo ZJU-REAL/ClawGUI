@@ -67,30 +67,61 @@ object AutoGLMAdapter : ModelAdapter {
         // The XML-style structured form is the contract — try it first.
         // Splitting on bare `do(action=` / `finish(message=` would otherwise
         // grab the *first* occurrence anywhere in the response, including
-        // the examples the model quotes inside <think>. That made the
-        // parser silently turn most reasoning into a malformed action and
-        // bail with finish() on step 1.
+        // examples the model quotes inside <think>.
         if ("<answer>" in response) {
             val parts = response.split("<answer>", limit = 2)
-            val thinking = parts[0]
+            val rawThink = parts[0]
                 .replace("<think>", "").replace("</think>", "").trim()
+            val thinking = cleanThinking(rawThink)
             val action = parts[1].replace("</answer>", "").trim()
             return thinking to action
         }
         // Fallbacks for models that drop the XML wrappers entirely. Use the
-        // *last* occurrence so any examples quoted in the reasoning lead-in
-        // don't get mistaken for the chosen action.
+        // *last* occurrence so any quoted examples in the lead-in can't
+        // shadow the real chosen action.
         val finishIdx = response.lastIndexOf("finish(message=")
         if (finishIdx >= 0) {
-            return response.substring(0, finishIdx).trim() to
+            return cleanThinking(response.substring(0, finishIdx).trim()) to
                 response.substring(finishIdx)
         }
         val doIdx = response.lastIndexOf("do(action=")
         if (doIdx >= 0) {
-            return response.substring(0, doIdx).trim() to
+            return cleanThinking(response.substring(0, doIdx).trim()) to
                 response.substring(doIdx)
         }
-        return "" to response
+        // Model went fully free-form — no XML, no command. Don't pretend
+        // there's an action. Surface a synthetic finish so the loop bails
+        // immediately with the rambling as the visible message, instead of
+        // looping while ActionParser fails over and over.
+        val cleaned = cleanThinking(response).take(400).ifBlank { "模型没有按要求的格式输出。" }
+        return cleaned to "finish(message=\"模型未按格式输出。原文摘要:${cleaned.take(120)}\")"
+    }
+
+    /**
+     * Strip the prompt-echo lines a free-rambling model tends to lead with
+     * (e.g. "任务:..." / "用户任务(原话)..."). These come from the model
+     * literally copying the user message back into its response. Showing
+     * them inside the chat bubble's thinking panel is noisy + makes it
+     * look like the agent is stuck on step 1.
+     */
+    private fun cleanThinking(raw: String): String {
+        val trimmed = raw.trim()
+        if (trimmed.isEmpty()) return ""
+        val skipPrefixes = listOf(
+            "任务:", "任务 :", "用户任务", "User task", "任务原话",
+        )
+        // Drop leading lines that start with any of the prefixes above.
+        val lines = trimmed.lines().dropWhile { line ->
+            val s = line.trim()
+            s.isEmpty() || skipPrefixes.any { s.startsWith(it) }
+        }
+        // Also strip any lingering <plan>...</plan> block so it doesn't show
+        // up in the chat panel. PlanProtocol.stripBlock handles this at the
+        // PhoneAgent layer too, but doing it here keeps every consumer
+        // clean by default.
+        return lines.joinToString("\n")
+            .replace(Regex("<plan>.*?</plan>", RegexOption.DOT_MATCHES_ALL), "")
+            .trim()
     }
 
     override fun buildMessages(
@@ -110,48 +141,26 @@ object AutoGLMAdapter : ModelAdapter {
                 "\n用户随任务附带了 ${extraUserImages.size} 张参考图(显示在屏幕截图之后),需要把它们当作任务的输入材料(比如要发布的图片、要识别的内容)。\n"
             } else ""
             val intro = """
-                用户任务(原话):$task
+                任务:$task
                 $refHint
-                这一步只做规划:理解任务、拆步骤、选第一个动作。
+                这是第一步,只做规划。按格式严格输出:
 
-                **必须按顺序输出三个块**:`<think>...</think>` → `<plan>{"ops":[...]}</plan>` → `<answer>...</answer>`。
+                <think>一两句话说理解到的目标 + 起手做什么</think>
+                <plan>{"ops":[{"op":"init","items":[{"id":"...","title":"..."}, ...]},{"op":"update","id":"<第一项>","status":"IN_PROGRESS"}]}</plan>
+                <answer>do(action="Launch", app="...") 或 do(action="Home") 或 do(action="Ask", question="...") 或 finish(message="...")</answer>
 
-                `<think>` 必须包含:
-                  第 0 节 任务规约 4 行:目标 / 终止条件 / 禁止条件 / 角色。
-                  第 3 节 完整计划(用列表写)。
-                  第 4 节 进度:`已完成 0/N`。
-                  其余小节按系统提示走。
-
-                `<plan>` 必须有一个 `op: "init"` 把整个计划列出来,并且至少一个 `op: "update"` 把第 1 项标为 `IN_PROGRESS`。格式示意(任务内容请按用户原话替换,不要照抄"打开淘宝/找耳机"):
-                ```
-                <plan>{"ops":[
-                  {"op":"init","items":[
-                    {"id":"open_shop","title":"打开淘宝"},
-                    {"id":"find","title":"找想要的耳机"},
-                    {"id":"buy","title":"下单"}
-                  ]},
-                  {"op":"update","id":"open_shop","status":"IN_PROGRESS"}
-                ]}</plan>
-                ```
-
-                `<answer>` 只能是下列之一:
-                  - `do(action="Launch", app="目标App名")` — 绝大多数任务
-                  - `do(action="Home")` — 仅当目标就是用桌面 / 系统设置
-                  - `do(action="Ask", question="...")` — 任务关键信息缺失
-                  - `finish(message="...")` — 任务不需要操作手机就能答复
-                不要输出 Tap / Swipe / Type / Back / Wait —— 还没进入目标 App。
+                直接以 `<think>` 开头,不要写任何引子。
             """.trimIndent()
             messages.add(MessageBuilder.createUserMessage(intro, null, extraUserImages))
         } else {
             val screenInfo = MessageBuilder.buildScreenInfo(currentApp, stepIndex)
             val body = """
-                ** 当前屏幕(第 $stepIndex 步)**
-                $screenInfo
+                第 $stepIndex 步。屏幕信息:$screenInfo
 
-                请按格式输出三个块:`<think>...</think>` → `<plan>{"ops":[...]}</plan>` → `<answer>...</answer>`。
-                - `<think>` 第 0 节"任务规约"照抄首步写过的 4 行,第 1 节用规约里的 Done When 严格判断是否真的命中。
-                - `<plan>` 至少一个 `update`,把刚做完的 item 标 `DONE`、把下一个 item 标 `IN_PROGRESS`。
-                - `<answer>` 一条指令。
+                按格式严格输出三块,直接以 `<think>` 开头:
+                <think>看到啥 + 这一步做什么(≤4 行)</think>
+                <plan>{"ops":[{"op":"update","id":"<上一项>","status":"DONE"},{"op":"update","id":"<下一项>","status":"IN_PROGRESS"}]}</plan>
+                <answer>一条 do(...) 或 finish(...)</answer>
             """.trimIndent()
             // Subsequent steps: never re-ship the user-ref images (they're
             // already preserved in context by removeImagesFromMessage's
