@@ -136,6 +136,26 @@ class PhoneAgent(
         modelClient.adapter.clearHistory()
     }
 
+    /**
+     * Feed back a user-typed answer in response to the model's most recent
+     * `do(action="Ask", question=...)` step. The next `step()` call will see
+     * the answer as a system feedback turn and is expected to proceed with
+     * the original task. Doesn't reset stuck counters — Ask isn't progress
+     * the model deserves credit for.
+     *
+     * We use a system role (not user) on purpose: a user role would re-anchor
+     * many adapters onto a new task, which would cause the model to think the
+     * user is re-issuing the whole job from scratch.
+     */
+    fun injectUserAnswer(question: String, answer: String) {
+        val safeAnswer = answer.ifBlank { "(用户没填,自己判断后继续)" }
+        context.add(mapOf(
+            "role" to "system",
+            "content" to "你上一步 Ask 的问题:「${question.trim()}」\n用户回答:$safeAnswer\n请基于这个回答继续原任务,不要重复提问。",
+        ))
+        modelClient.adapter.addHistory("[用户回答 Ask] $safeAnswer")
+    }
+
     private suspend fun executeStep(
         userPrompt: String? = null,
         isFirst: Boolean = false,

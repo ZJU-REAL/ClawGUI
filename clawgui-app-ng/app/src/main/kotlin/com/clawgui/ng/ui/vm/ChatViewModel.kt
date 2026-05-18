@@ -645,6 +645,44 @@ class ChatViewModel(
                         ?: "任务结束"
                     break
                 }
+
+                // ── Ask-the-user mid-task ──────────────────────────────────
+                // Model emitted `do(action="Ask", question="...")`. Surface a
+                // floating overlay above whatever app is on top, suspend the
+                // loop until the user types an answer (or cancels), then
+                // inject the answer back into the agent context and resume.
+                if (actionName == "Ask") {
+                    val question = (step.action["question"] as? String)
+                        ?: step.message
+                        ?: "请补充信息"
+                    sessions.updateLastMessage(key) {
+                        it.copy(content = "🙋 已问你:$question\n等你回复中…", thinking = thinkingLog.toString())
+                    }
+                    RuntimeContainer.publishExecution(
+                        ExecutionStatus(
+                            state = ExecutionState.THINKING,
+                            title = "等待用户回答",
+                            subtitle = question.take(80),
+                        )
+                    )
+                    val answer = withContext(Dispatchers.Main) {
+                        com.clawgui.ng.runtime.overlay.AskUserOverlay.askAndWait(
+                            RuntimeContainer.appContext, question
+                        )
+                    }
+                    if (answer == null) {
+                        finalMessage = "已被用户取消(没回答 Ask)"
+                        break
+                    }
+                    agent.injectUserAnswer(question, answer)
+                    // Persist the user's answer into the chat thinking log so
+                    // the trace + post-mortem viewer shows what was asked /
+                    // answered, not just an opaque "Ask" step.
+                    thinkingLog.append("\n\n👤 用户回答:$answer")
+                    sessions.updateLastMessage(key) {
+                        it.copy(content = "用户已回答,继续执行…", thinking = thinkingLog.toString())
+                    }
+                }
             }
             // If we fall out without finalMessage, the loop was cancelled
             // (user stop / coroutine cancel). Leave finalMessage null so the
@@ -659,6 +697,8 @@ class ChatViewModel(
                 )
             )
         } finally {
+            // Safety-net: an exception mid-Ask leaves the overlay floating.
+            runCatching { com.clawgui.ng.runtime.overlay.AskUserOverlay.forceDismiss() }
             agent.cleanup()
             agent.traceSink = null
             recorder?.finalize(
@@ -761,6 +801,9 @@ class ChatViewModel(
     fun stop() {
         runJob?.cancel(); runJob = null
         _isExecuting.value = false
+        // Drop any pending ask-user overlay so it doesn't stay floating
+        // above the user's apps after they hit Stop.
+        runCatching { com.clawgui.ng.runtime.overlay.AskUserOverlay.forceDismiss() }
         RuntimeContainer.publishExecution(
             ExecutionStatus(state = ExecutionState.STOPPED, title = "已停止")
         )

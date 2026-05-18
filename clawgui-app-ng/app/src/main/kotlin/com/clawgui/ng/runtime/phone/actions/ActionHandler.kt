@@ -55,6 +55,13 @@ class ActionHandler(
             "Long Press" -> handleLongPress(action)
             "Wait" -> handleWait(action)
             "Take_over" -> handleTakeover(action)
+            // The model can pause itself and ask the user for a clarification
+            // — execution semantics are entirely owned by the outer loop
+            // (ChatViewModel) which surfaces the question to the user via a
+            // floating overlay and feeds the answer back as a system message
+            // before driving the next step. From the handler's perspective
+            // it's a successful no-op that doesn't finish the task.
+            "Ask" -> ActionResult(true, false, message = action["question"] as? String)
             "Note", "Call_API", "Interact" -> ActionResult(true, false)
             // Common hallucinated action names — model invents these when it
             // wants to "take a screenshot" or "look at the screen", but every

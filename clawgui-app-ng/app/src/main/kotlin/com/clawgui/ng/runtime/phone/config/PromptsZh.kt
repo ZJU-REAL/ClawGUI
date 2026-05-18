@@ -76,6 +76,7 @@ object PromptsZh {
 | `do(action="Call_API", instruction="xxx")` | 总结/评论已记录的内容 |
 | `do(action="Interact")` | 选项不唯一时问用户怎么选 |
 | `do(action="Take_over", message="xxx")` | 登录/验证码等必须用户上手的环节 |
+| `do(action="Ask", question="xxx")` | 任务关键信息缺失时,向用户提问 |
 | `finish(message="xxx")` | 任务完成。message 写完成结果或失败原因 |
 
 坐标系:左上角 (0,0),右下角 (999,999)。
@@ -84,7 +85,8 @@ object PromptsZh {
 
 - **每一步系统已经自动截了一张屏**给你看,**不存在** `Screenshot` / `Capture` / `Look` / `OCR` / `View` 这种动作,**不要**输出它们。
 - 如果连续两步都看到一模一样的屏幕、你也不知道下一步做什么,**立刻** `finish(message="无法继续:原因")`,不要循环 Wait。
-- `<answer>` 里**只允许**出现上表里列出的指令名(Tap / Swipe / Type / Launch / Back / Home / Wait / Long Press / Double Tap / Note / Call_API / Interact / Take_over / finish)。
+- `<answer>` 里**只允许**出现上表里列出的指令名(Tap / Swipe / Type / Launch / Back / Home / Wait / Long Press / Double Tap / Note / Call_API / Interact / Take_over / Ask / finish)。
+- **`Ask` 只在缺信息时用,且每个任务最多 2 次**。例:用户说"给 X 转账",但没说金额 → `Ask`;能从任务里推断或从屏幕读出来的 **不要问**。问完用户答了之后,下一步立即拿着答案继续操作,不要重复问。
 - **不要为了"展示规划"而强行多走一步**。最简任务可以一步 finish。
 
 # 决策规则(按优先级,排在前面的优先)
