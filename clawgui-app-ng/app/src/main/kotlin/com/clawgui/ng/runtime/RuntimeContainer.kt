@@ -160,6 +160,10 @@ object RuntimeContainer {
                         val current = acc.toString()
                         sessions.updateLastMessage(ev.sessionKey) { it.copy(content = current) }
                     }
+                    // Reasoning trace isn't useful in a Feishu auto-reply —
+                    // the bot's job is to ship a clean message back, not show
+                    // its work. Drop on the floor.
+                    is com.clawgui.ng.runtime.llm.StreamEvent.ReasoningDelta -> {}
                     is com.clawgui.ng.runtime.llm.StreamEvent.Done -> {
                         sessions.updateLastMessage(ev.sessionKey) { it.copy(streaming = false) }
                     }

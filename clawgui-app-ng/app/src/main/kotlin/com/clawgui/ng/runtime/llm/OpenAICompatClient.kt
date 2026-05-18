@@ -94,6 +94,14 @@ class OpenAICompatClient(
                     val obj = json.parseToJsonElement(data).jsonObject
                     val choice = obj["choices"]?.jsonArray?.firstOrNull()?.jsonObject
                     val delta = choice?.get("delta")?.jsonObject
+                    // Reasoning-capable providers (GLM-4.5+, DeepSeek-R1) attach
+                    // a sibling field — surface those tokens as ReasoningDelta
+                    // so the UI can fold them under a "思考过程" panel without
+                    // the inline-<think>-tag fallback that handles other models.
+                    val reasoning = delta?.get("reasoning_content")?.jsonPrimitive?.content
+                    if (!reasoning.isNullOrEmpty()) {
+                        trySend(StreamEvent.ReasoningDelta(reasoning))
+                    }
                     val content = delta?.get("content")?.jsonPrimitive?.content
                     if (!content.isNullOrEmpty()) {
                         trySend(StreamEvent.Delta(content))
@@ -204,7 +212,14 @@ sealed interface ContentPart {
 }
 
 sealed interface StreamEvent {
+    /** Final reply text, surfaced character-by-character. */
     data class Delta(val text: String) : StreamEvent
+    /** Reasoning trace, surfaced separately so the UI can fold it under a
+     *  "thinking" panel. Some providers (智谱 GLM-4.5+/5.0+, DeepSeek-R1)
+     *  ship reasoning_content distinct from content; for providers that
+     *  inline reasoning via <think>...</think> tags inside content, the
+     *  caller splits the stream and emits ReasoningDelta. */
+    data class ReasoningDelta(val text: String) : StreamEvent
     data object Done : StreamEvent
     data class Error(val message: String) : StreamEvent
 }

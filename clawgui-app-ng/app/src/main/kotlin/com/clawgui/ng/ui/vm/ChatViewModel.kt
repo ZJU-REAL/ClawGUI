@@ -823,14 +823,41 @@ class ChatViewModel(
             "$baseSystem\n用户附了图片在最后一条消息里,请按用户要求基于图片内容作答。"
         } else baseSystem
         val acc = StringBuilder()
+        val thinkAcc = StringBuilder()
+        // For models that inline reasoning via <think>...</think> tags inside
+        // the content stream, this incrementally peels them out and routes
+        // them to `thinking` instead. Models that surface reasoning_content
+        // as a sibling SSE field deliver it via StreamEvent.ReasoningDelta
+        // and bypass the splitter entirely.
+        val splitter = com.clawgui.ng.runtime.llm.ThinkTagSplitter()
 
         try {
             brain.streamReply(system, history).collect { ev ->
                 when (ev) {
+                    is StreamEvent.ReasoningDelta -> {
+                        thinkAcc.append(ev.text)
+                        val current = thinkAcc.toString()
+                        sessions.updateLastMessage(key) { it.copy(thinking = current) }
+                        RuntimeContainer.publishExecution(
+                            ExecutionStatus(
+                                state = ExecutionState.THINKING,
+                                title = "正在思考",
+                                subtitle = cred.model,
+                                thinking = current.takeLast(120),
+                            )
+                        )
+                    }
                     is StreamEvent.Delta -> {
-                        acc.append(ev.text)
-                        val current = acc.toString()
-                        sessions.updateLastMessage(key) { it.copy(content = current) }
+                        val out = splitter.push(ev.text)
+                        if (out.thinking.isNotEmpty()) thinkAcc.append(out.thinking)
+                        if (out.content.isNotEmpty()) acc.append(out.content)
+                        if (!out.isEmpty()) {
+                            val curContent = acc.toString()
+                            val curThink = thinkAcc.toString().takeIf { it.isNotEmpty() }
+                            sessions.updateLastMessage(key) {
+                                it.copy(content = curContent, thinking = curThink)
+                            }
+                        }
                         RuntimeContainer.publishExecution(
                             ExecutionStatus(
                                 state = ExecutionState.ACTING,
@@ -840,7 +867,16 @@ class ChatViewModel(
                         )
                     }
                     is StreamEvent.Done -> {
-                        sessions.updateLastMessage(key) { it.copy(streaming = false) }
+                        val tail = splitter.finish()
+                        if (tail.thinking.isNotEmpty()) thinkAcc.append(tail.thinking)
+                        if (tail.content.isNotEmpty()) acc.append(tail.content)
+                        sessions.updateLastMessage(key) {
+                            it.copy(
+                                content = acc.toString(),
+                                thinking = thinkAcc.toString().takeIf { s -> s.isNotEmpty() },
+                                streaming = false,
+                            )
+                        }
                         RuntimeContainer.publishExecution(
                             ExecutionStatus(state = ExecutionState.DONE, title = "执行完成")
                         )
@@ -850,6 +886,7 @@ class ChatViewModel(
                         sessions.updateLastMessage(key) {
                             it.copy(
                                 content = if (acc.isEmpty()) "请求失败:" + ev.message else acc.toString(),
+                                thinking = thinkAcc.toString().takeIf { s -> s.isNotEmpty() },
                                 streaming = false,
                                 error = ev.message,
                             )
