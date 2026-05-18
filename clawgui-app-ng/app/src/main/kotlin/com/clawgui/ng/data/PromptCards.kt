@@ -39,11 +39,13 @@ object DefaultPromptCards {
             accentHue = 140,
         ),
         PromptCard(
-            id = "translate_screen",
-            emoji = "\uD83C\uDF10",
-            title = "翻译当前屏幕",
-            subtitle = "截图后整页翻译为中文",
-            prompt = "截一下当前屏幕,把上面的所有文字翻译成中文给我看。",
+            id = "wechat_send",
+            emoji = "\uD83D\uDCE8",
+            title = "微信发消息",
+            subtitle = "Agent 会反问你「发给谁、说啥」",
+            // Deliberately vague — triggers the Ask flow so the user can see
+            // the mid-task clarification overlay in action.
+            prompt = "用微信帮我发条消息",
             accentHue = 250,
         ),
         PromptCard(
