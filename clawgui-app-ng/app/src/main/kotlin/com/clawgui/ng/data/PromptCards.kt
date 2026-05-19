@@ -39,13 +39,13 @@ object DefaultPromptCards {
             accentHue = 140,
         ),
         PromptCard(
-            id = "wechat_send",
-            emoji = "\uD83D\uDCE8",
-            title = "微信发消息",
-            subtitle = "Agent 会反问你「发给谁、说啥」",
+            id = "wechat_moments",
+            emoji = "\uD83C\uDF1F",
+            title = "发朋友圈",
+            subtitle = "Agent 会反问你「想发什么内容」",
             // Deliberately vague — triggers the Ask flow so the user can see
             // the mid-task clarification overlay in action.
-            prompt = "用微信帮我发条消息",
+            prompt = "帮我发条微信朋友圈",
             accentHue = 250,
         ),
         PromptCard(
