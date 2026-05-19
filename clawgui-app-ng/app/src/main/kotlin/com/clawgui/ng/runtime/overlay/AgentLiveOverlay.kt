@@ -302,25 +302,29 @@ private fun CollapsedDot(
     onTap: () -> Unit,
     modifier: Modifier,
 ) {
+    // ZJU-blue translucent background — distinct from the white/charcoal
+    // expanded panel so the user knows this is "minimised" not "off".
+    // 28dp total feels closer to a status pill than a real button.
+    val dotBg = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
     Box(
         modifier = modifier
-            .size(44.dp)
+            .size(28.dp)
             .clip(CircleShape)
-            .background(panelColor)
+            .background(dotBg)
             .clickable(onClick = onTap),
         contentAlignment = Alignment.Center,
     ) {
         if (streaming) {
             CircularProgressIndicator(
-                strokeWidth = 2.2.dp,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(22.dp),
+                strokeWidth = 1.6.dp,
+                color = Color.White,
+                modifier = Modifier.size(14.dp),
             )
         } else {
             Icon(
                 Icons.Rounded.AutoAwesome, null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
+                tint = Color.White,
+                modifier = Modifier.size(14.dp),
             )
         }
     }
