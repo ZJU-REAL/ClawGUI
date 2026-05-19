@@ -9,6 +9,7 @@ import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -181,15 +182,20 @@ private fun AgentLivePanel(
     onReleaseFocus: () -> Unit,
 ) {
     if (snapshot == null) return
-    var expanded by remember { mutableStateOf(true) }
+    // Tri-state collapse so the overlay starts maximally out-of-the-way:
+    //   0 = spinning chip pill (≈40dp circle) — least intrusive
+    //   1 = one-line summary (current step + progress)
+    //   2 = full panel (plan + trace + ask input)
+    // Tap cycles 0 → 1 → 2 → 0. Auto-jumps to 2 when an Ask arrives so
+    // the user can answer without first finding the panel.
+    var stage by remember { mutableStateOf(0) }
     val plan = snapshot.plan
     val trace = snapshot.trace
     val askQuestion = snapshot.askQuestion
-    // Auto-expand when an Ask comes in so the user sees the input field
-    // immediately even if they had previously collapsed the panel.
     androidx.compose.runtime.LaunchedEffect(askQuestion) {
-        if (askQuestion != null) expanded = true
+        if (askQuestion != null) stage = 2
     }
+    val expanded = stage == 2  // legacy alias used in a few spots below
 
     // Detect dark theme so we pick a neutral panel color instead of letting
     // Material3's tonal-elevation overlay tint everything blue in dark
@@ -209,23 +215,51 @@ private fun AgentLivePanel(
     else
         Color(0xFF1A1C1E)
 
+    val cycleStage = { stage = (stage + 1) % 3 }
+    val dragModifier = Modifier
+        .pointerInput(Unit) {
+            // Long-press to drag in collapsed states (stage 0 / 1) so a
+            // casual tap still cycles. detectDragGesturesAfterLongPress
+            // delays the drag until the long-press, exactly the gesture
+            // model the user asked for.
+            detectDragGesturesAfterLongPress(
+                onDrag = { _, drag -> onDragDelta(drag.x, drag.y) },
+            )
+        }
+
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.compose.material3.LocalContentColor provides onPanel,
     ) {
         Box(modifier = Modifier.padding(8.dp)) {
-            Surface(
-                shape = RoundedCornerShape(18.dp),
-                color = panelColor,
-                shadowElevation = 8.dp,
-                tonalElevation = 0.dp,
-                modifier = Modifier.widthIn(min = 220.dp, max = 320.dp),
-            ) {
-                Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            when (stage) {
+                0 -> CollapsedDot(
+                    streaming = snapshot.streaming,
+                    panelColor = panelColor,
+                    onTap = cycleStage,
+                    modifier = dragModifier,
+                )
+                1 -> CollapsedChip(
+                    plan = plan,
+                    trace = trace,
+                    streaming = snapshot.streaming,
+                    panelColor = panelColor,
+                    onTap = cycleStage,
+                    onDismiss = onDismiss,
+                    modifier = dragModifier,
+                )
+                else -> Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = panelColor,
+                    shadowElevation = 8.dp,
+                    tonalElevation = 0.dp,
+                    modifier = Modifier.widthIn(min = 220.dp, max = 320.dp),
+                ) {
+                    Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
                 Header(
                     plan = plan,
                     streaming = snapshot.streaming,
                     expanded = expanded,
-                    onToggle = { expanded = !expanded },
+                    onToggle = cycleStage,
                     onDismiss = onDismiss,
                     onDragDelta = onDragDelta,
                 )
@@ -254,10 +288,123 @@ private fun AgentLivePanel(
                         )
                     }
                 }
-                }   // Column
-            }       // Surface
-        }           // Box
-    }               // CompositionLocalProvider
+                    }   // Column
+                }       // Surface (inside else branch)
+            }           // when
+        }               // Box
+    }                   // CompositionLocalProvider
+}
+
+@Composable
+private fun CollapsedDot(
+    streaming: Boolean,
+    panelColor: Color,
+    onTap: () -> Unit,
+    modifier: Modifier,
+) {
+    Box(
+        modifier = modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(panelColor)
+            .clickable(onClick = onTap),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (streaming) {
+            CircularProgressIndicator(
+                strokeWidth = 2.2.dp,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp),
+            )
+        } else {
+            Icon(
+                Icons.Rounded.AutoAwesome, null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CollapsedChip(
+    plan: Plan?,
+    trace: List<StepRecord>,
+    streaming: Boolean,
+    panelColor: Color,
+    onTap: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier,
+) {
+    val done = plan?.doneCount ?: 0
+    val total = plan?.totalCount ?: 0
+    val activeItem = plan?.items?.firstOrNull { it.status == PlanItemStatus.IN_PROGRESS }
+    val lastTrace = trace.lastOrNull()
+    val headline = when {
+        activeItem != null -> activeItem.title
+        lastTrace != null -> "${lastTrace.actionName}" +
+            if (lastTrace.actionExtra.isNotBlank()) " · ${lastTrace.actionExtra}" else ""
+        streaming -> "正在思考…"
+        else -> "已完成"
+    }
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = panelColor,
+        shadowElevation = 6.dp,
+        tonalElevation = 0.dp,
+        modifier = modifier
+            .widthIn(min = 180.dp, max = 260.dp)
+            .clickable(onClick = onTap),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            if (streaming) {
+                CircularProgressIndicator(
+                    strokeWidth = 1.8.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
+            } else {
+                Icon(
+                    Icons.Rounded.AutoAwesome, null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(
+                headline,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (total > 0) {
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "$done/$total",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            Box(
+                Modifier
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onDismiss),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Rounded.Close, "关闭",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(12.dp),
+                )
+            }
+        }
+    }
 }
 
 @Composable
