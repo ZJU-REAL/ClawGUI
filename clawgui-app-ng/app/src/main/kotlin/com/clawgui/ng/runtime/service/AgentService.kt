@@ -49,12 +49,13 @@ class AgentService : Service() {
             return
         }
 
-        // Overlay needs SYSTEM_ALERT_WINDOW; if it's not granted we silently
-        // skip the floating panel rather than crash. The compact
+        // Overlay needs SYSTEM_ALERT_WINDOW *and* user opt-in. The compact
         // DynamicIsland pill was dropped — its dark surface conflicted
-        // visually with the larger AgentLive panel and showed duplicate
-        // info. AgentLive carries the same status + more.
-        if (canDrawOverlays(this)) {
+        // visually with the larger AgentLive panel.
+        val overlayOptIn = runCatching {
+            RuntimeContainer.settings.overlayEnabled.value
+        }.getOrDefault(true)
+        if (overlayOptIn && canDrawOverlays(this)) {
             // Keep a single AgentLiveOverlay instance; flip it visible only
             // while there's an active live snapshot. Showing it eagerly with
             // a null snapshot leaves an empty 0-sized window hanging around.

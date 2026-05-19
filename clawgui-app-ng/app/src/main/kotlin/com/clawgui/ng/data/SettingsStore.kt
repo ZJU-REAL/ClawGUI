@@ -162,4 +162,15 @@ class SettingsStore(context: Context) {
     var notifyVerbose: Boolean
         get() = plain.getBoolean("notify_verbose", true)
         set(v) { plain.edit().putBoolean("notify_verbose", v).apply() }
+
+    // ── Floating Plan + Trace overlay ─────────────────────────────────
+
+    var overlayEnabled: Boolean
+        get() = plain.getBoolean("overlay_enabled", true)
+        set(v) { plain.edit().putBoolean("overlay_enabled", v).apply() }
+
+    /** Surface alpha 0..100. UI clamps to 50..100. */
+    var overlayAlphaPct: Int
+        get() = plain.getInt("overlay_alpha_pct", 85)
+        set(v) { plain.edit().putInt("overlay_alpha_pct", v.coerceIn(40, 100)).apply() }
 }

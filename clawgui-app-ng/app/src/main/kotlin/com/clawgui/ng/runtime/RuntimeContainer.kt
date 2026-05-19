@@ -48,6 +48,10 @@ object RuntimeContainer {
         val plan: com.clawgui.ng.data.Plan?,
         val trace: List<com.clawgui.ng.data.StepRecord>,
         val streaming: Boolean,
+        /** When non-null the agent is mid-Ask and the overlay should render
+         *  an input field for the user. Submitting fires [onAskAnswer]. */
+        val askQuestion: String? = null,
+        val onAskAnswer: ((String?) -> Unit)? = null,
     )
     private val _agentLive = MutableStateFlow<AgentLiveSnapshot?>(null)
     val agentLive: StateFlow<AgentLiveSnapshot?> = _agentLive

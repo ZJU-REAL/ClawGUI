@@ -39,14 +39,14 @@ object DefaultPromptCards {
             accentHue = 140,
         ),
         PromptCard(
-            id = "wechat_moments",
-            emoji = "\uD83C\uDF1F",
-            title = "发朋友圈",
+            id = "xhs_post",
+            emoji = "\uD83D\uDCD3",
+            title = "发小红书笔记",
             subtitle = "Agent 会反问你「想发什么内容」",
             // Deliberately vague — triggers the Ask flow so the user can see
-            // the mid-task clarification overlay in action.
-            prompt = "帮我发条微信朋友圈",
-            accentHue = 250,
+            // the mid-task clarification UI in action.
+            prompt = "帮我在小红书发一条笔记",
+            accentHue = 0,
         ),
         PromptCard(
             id = "settings_optimize",

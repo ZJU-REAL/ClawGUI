@@ -704,11 +704,32 @@ class ChatViewModel(
                             subtitle = question.take(80),
                         )
                     )
-                    val answer = withContext(Dispatchers.Main) {
-                        com.clawgui.ng.runtime.overlay.AskUserOverlay.askAndWait(
-                            RuntimeContainer.appContext, question
+                    // Publish the question through the overlay's live
+                    // snapshot — the floating panel renders an inline input
+                    // box and submits back via the onAskAnswer callback.
+                    // Suspend on a CompletableDeferred so the loop pauses
+                    // until the user submits or cancels.
+                    val deferred =
+                        kotlinx.coroutines.CompletableDeferred<String?>()
+                    RuntimeContainer.publishAgentLive(
+                        RuntimeContainer.AgentLiveSnapshot(
+                            plan = runningPlan,
+                            trace = trace.toList(),
+                            streaming = false,
+                            askQuestion = question,
+                            onAskAnswer = { deferred.complete(it) },
                         )
-                    }
+                    )
+                    val answer = deferred.await()
+                    // Clear the ask state — overlay drops the input UI but
+                    // stays visible for the next step.
+                    RuntimeContainer.publishAgentLive(
+                        RuntimeContainer.AgentLiveSnapshot(
+                            plan = runningPlan,
+                            trace = trace.toList(),
+                            streaming = true,
+                        )
+                    )
                     if (answer == null) {
                         finalMessage = "已被用户取消(没回答 Ask)"
                         break
@@ -736,8 +757,6 @@ class ChatViewModel(
                 )
             )
         } finally {
-            // Safety-net: an exception mid-Ask leaves the overlay floating.
-            runCatching { com.clawgui.ng.runtime.overlay.AskUserOverlay.forceDismiss() }
             agent.cleanup()
             agent.traceSink = null
             recorder?.finalize(
@@ -873,9 +892,9 @@ class ChatViewModel(
     fun stop() {
         runJob?.cancel(); runJob = null
         _isExecuting.value = false
-        // Drop any pending ask-user overlay so it doesn't stay floating
-        // above the user's apps after they hit Stop.
-        runCatching { com.clawgui.ng.runtime.overlay.AskUserOverlay.forceDismiss() }
+        // Clear the live-snapshot so the overlay hides; the inline Ask
+        // input (if any) goes away with it.
+        RuntimeContainer.publishAgentLive(null)
         RuntimeContainer.publishExecution(
             ExecutionStatus(state = ExecutionState.STOPPED, title = "已停止")
         )

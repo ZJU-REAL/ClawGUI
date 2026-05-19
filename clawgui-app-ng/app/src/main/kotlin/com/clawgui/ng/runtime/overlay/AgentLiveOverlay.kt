@@ -4,11 +4,11 @@ import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Build
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,7 +50,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,7 +65,6 @@ import com.clawgui.ng.data.PlanItemStatus
 import com.clawgui.ng.data.StepRecord
 import com.clawgui.ng.runtime.RuntimeContainer
 import com.clawgui.ng.ui.theme.ClawNgTheme
-import kotlin.math.abs
 
 /**
  * Floating, semi-transparent panel that mirrors the agent's live plan +
@@ -93,18 +95,41 @@ class AgentLiveOverlay(private val context: Context) {
         if (rootView != null) return
         val owner = OverlayLifecycleOwner().also { it.start() }
         lifecycleOwner = owner
+        val params = buildParams()
         val composeView = ComposeView(context).apply {
             setViewTreeLifecycleOwner(owner)
             setViewTreeSavedStateRegistryOwner(owner)
             setContent {
                 ClawNgTheme {
                     val snap by RuntimeContainer.agentLive.collectAsState()
-                    AgentLivePanel(snapshot = snap, onDismiss = { hide() })
+                    AgentLivePanel(
+                        snapshot = snap,
+                        onDismiss = { hide() },
+                        onDragDelta = { dx, dy ->
+                            // gravity is TOP|END, so positive dx moves *left*
+                            // from the right edge. Invert dx for natural drag.
+                            params.x = (params.x - dx.toInt()).coerceAtLeast(0)
+                            params.y = (params.y + dy.toInt()).coerceAtLeast(0)
+                            runCatching { wm.updateViewLayout(rootView, params) }
+                        },
+                        onRequestFocus = {
+                            // When the user taps the Ask input field we
+                            // briefly flip the window focusable so the IME
+                            // can pop. Otherwise NOT_FOCUSABLE blocks all
+                            // typing.
+                            params.flags = params.flags and
+                                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
+                            runCatching { wm.updateViewLayout(rootView, params) }
+                        },
+                        onReleaseFocus = {
+                            params.flags = params.flags or
+                                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                            runCatching { wm.updateViewLayout(rootView, params) }
+                        },
+                    )
                 }
             }
         }
-        val params = buildParams()
-        attachDrag(composeView, params)
         runCatching { wm.addView(composeView, params) }
         rootView = composeView
         // AgentService owns the show/hide policy via the agentLive flow.
@@ -141,63 +166,48 @@ class AgentLiveOverlay(private val context: Context) {
         }
     }
 
-    private fun attachDrag(view: View, params: WindowManager.LayoutParams) {
-        var downX = 0f
-        var downY = 0f
-        var origX = 0
-        var origY = 0
-        var dragging = false
-        view.setOnTouchListener { _, e ->
-            when (e.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    downX = e.rawX; downY = e.rawY
-                    origX = params.x; origY = params.y
-                    dragging = false
-                    false  // let Compose see the click for header tap-to-toggle
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = (e.rawX - downX).toInt()
-                    val dy = (e.rawY - downY).toInt()
-                    if (!dragging && (abs(dx) > 12 || abs(dy) > 12)) dragging = true
-                    if (dragging) {
-                        // gravity is TOP|END, so positive x moves *left* from the
-                        // right edge. We invert dx for natural drag direction.
-                        params.x = (origX - dx).coerceAtLeast(0)
-                        params.y = (origY + dy).coerceAtLeast(0)
-                        runCatching { wm.updateViewLayout(view, params) }
-                        true
-                    } else false
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> dragging
-                else -> false
-            }
-        }
-    }
+    // attachDrag removed — drag is now handled inside the Composable header
+    // via Modifier.pointerInput { detectDragGestures }, which cooperates
+    // with Compose gesture detection instead of fighting it through
+    // setOnTouchListener.
 }
 
 @Composable
 private fun AgentLivePanel(
     snapshot: RuntimeContainer.AgentLiveSnapshot?,
     onDismiss: () -> Unit,
+    onDragDelta: (Float, Float) -> Unit,
+    onRequestFocus: () -> Unit,
+    onReleaseFocus: () -> Unit,
 ) {
     if (snapshot == null) return
     var expanded by remember { mutableStateOf(true) }
     val plan = snapshot.plan
     val trace = snapshot.trace
+    val askQuestion = snapshot.askQuestion
+    // Auto-expand when an Ask comes in so the user sees the input field
+    // immediately even if they had previously collapsed the panel.
+    androidx.compose.runtime.LaunchedEffect(askQuestion) {
+        if (askQuestion != null) expanded = true
+    }
 
     // Detect dark theme so we pick a neutral panel color instead of letting
     // Material3's tonal-elevation overlay tint everything blue in dark
-    // mode. We use a fixed near-black / near-white with deliberate alpha
-    // so the host app shows through.
+    // mode. User-configurable alpha (40-100 pct) clamps how see-through
+    // the panel is — lands as the alpha channel of the base color.
     val dark = androidx.compose.foundation.isSystemInDarkTheme()
+    val alphaPct = runCatching {
+        RuntimeContainer.settings.overlayAlphaPct.collectAsState().value
+    }.getOrDefault(85).coerceIn(40, 100)
+    val a = (alphaPct * 255 / 100).coerceIn(0, 255)
     val panelColor = if (dark)
-        androidx.compose.ui.graphics.Color(0xCC121417)   // ~80% opaque charcoal
+        Color(red = 0x12, green = 0x14, blue = 0x17, alpha = a)
     else
-        androidx.compose.ui.graphics.Color(0xD9FFFFFF)   // ~85% opaque white
+        Color(red = 0xFF, green = 0xFF, blue = 0xFF, alpha = a)
     val onPanel = if (dark)
-        androidx.compose.ui.graphics.Color(0xFFE6E8EC)
+        Color(0xFFE6E8EC)
     else
-        androidx.compose.ui.graphics.Color(0xFF1A1C1E)
+        Color(0xFF1A1C1E)
 
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.compose.material3.LocalContentColor provides onPanel,
@@ -217,6 +227,7 @@ private fun AgentLivePanel(
                     expanded = expanded,
                     onToggle = { expanded = !expanded },
                     onDismiss = onDismiss,
+                    onDragDelta = onDragDelta,
                 )
                 if (expanded) {
                     if (plan != null && plan.items.isNotEmpty()) {
@@ -226,6 +237,21 @@ private fun AgentLivePanel(
                     if (trace.isNotEmpty()) {
                         Spacer(Modifier.height(8.dp))
                         TraceMini(trace, streaming = snapshot.streaming)
+                    }
+                    if (askQuestion != null && snapshot.onAskAnswer != null) {
+                        Spacer(Modifier.height(10.dp))
+                        AskInline(
+                            question = askQuestion,
+                            onSubmit = { ans ->
+                                onReleaseFocus()
+                                snapshot.onAskAnswer.invoke(ans)
+                            },
+                            onCancel = {
+                                onReleaseFocus()
+                                snapshot.onAskAnswer.invoke(null)
+                            },
+                            onRequestFocus = onRequestFocus,
+                        )
                     }
                 }
                 }   // Column
@@ -241,6 +267,7 @@ private fun Header(
     expanded: Boolean,
     onToggle: () -> Unit,
     onDismiss: () -> Unit,
+    onDragDelta: (Float, Float) -> Unit,
 ) {
     val done = plan?.doneCount ?: 0
     val total = plan?.totalCount ?: 0
@@ -248,6 +275,14 @@ private fun Header(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
+            // Header is the drag handle. detectDragGestures cooperates with
+            // child clickables: drag-then-toggle works because we only
+            // consume MOVE events after a small slop.
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDrag = { _, drag -> onDragDelta(drag.x, drag.y) },
+                )
+            }
             .clickable(onClick = onToggle),
     ) {
         Box(
@@ -428,6 +463,95 @@ private fun TraceMini(trace: List<StepRecord>, streaming: Boolean) {
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AskInline(
+    question: String,
+    onSubmit: (String) -> Unit,
+    onCancel: () -> Unit,
+    onRequestFocus: () -> Unit,
+) {
+    var answer by remember(question) { mutableStateOf("") }
+    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                RoundedCornerShape(10.dp),
+            )
+            .padding(10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Rounded.AutoAwesome, null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(12.dp),
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                "Agent 想确认",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            question,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(6.dp))
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            androidx.compose.foundation.text.BasicTextField(
+                value = answer,
+                onValueChange = { answer = it },
+                textStyle = androidx.compose.material3.LocalTextStyle.current.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                ),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(
+                    MaterialTheme.colorScheme.primary,
+                ),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Send,
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onSend = { onSubmit(answer) },
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                    .focusRequester(focus)
+                    // Tapping the field needs to flip the WindowManager
+                    // window to focusable so the IME can attach. Without
+                    // this the cursor blinks but the keyboard never pops.
+                    .onFocusChanged { st ->
+                        if (st.isFocused) onRequestFocus()
+                    },
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+            androidx.compose.material3.TextButton(onClick = onCancel) {
+                Text("取消", style = MaterialTheme.typography.labelMedium)
+            }
+            Spacer(Modifier.width(4.dp))
+            androidx.compose.material3.FilledTonalButton(
+                onClick = { onSubmit(answer) },
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    horizontal = 14.dp, vertical = 4.dp,
+                ),
+            ) {
+                Text("继续", style = MaterialTheme.typography.labelMedium)
             }
         }
     }

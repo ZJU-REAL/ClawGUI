@@ -129,6 +129,21 @@ class SettingsRepository(private val store: SettingsStore) {
         store.notifyVerbose = v
     }
 
+    private val _overlayEnabled = MutableStateFlow(store.overlayEnabled)
+    val overlayEnabled: StateFlow<Boolean> = _overlayEnabled
+    fun setOverlayEnabled(v: Boolean) {
+        _overlayEnabled.value = v
+        store.overlayEnabled = v
+    }
+
+    private val _overlayAlphaPct = MutableStateFlow(store.overlayAlphaPct)
+    val overlayAlphaPct: StateFlow<Int> = _overlayAlphaPct
+    fun setOverlayAlphaPct(v: Int) {
+        val clamped = v.coerceIn(40, 100)
+        _overlayAlphaPct.value = clamped
+        store.overlayAlphaPct = clamped
+    }
+
     fun setActiveBrain(id: String) {
         _activeBrain.value = id
         store.activeBrain = id

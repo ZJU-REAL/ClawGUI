@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.Palette
@@ -128,6 +129,7 @@ fun SettingsScreen(onClose: () -> Unit) {
                     SettingsPage.Traces -> TracesPage()
                     SettingsPage.Performance -> PerformancePage()
                     SettingsPage.Notification -> NotificationPage()
+                    SettingsPage.Overlay -> OverlayPage()
                     SettingsPage.Appearance -> AppearancePage()
                     SettingsPage.About -> AboutPage()
                 }
@@ -145,6 +147,7 @@ private sealed class SettingsPage(val title: String) {
     data object Traces : SettingsPage("运行记录")
     data object Performance : SettingsPage("性能 · 截图压缩")
     data object Notification : SettingsPage("通知")
+    data object Overlay : SettingsPage("悬浮面板")
     data object Appearance : SettingsPage("外观")
     data object About : SettingsPage("关于")
 }
@@ -181,6 +184,7 @@ private fun SettingsHomePage(onNavigate: (SettingsPage) -> Unit) {
         SettingsRowSpec("ClawGUI 输入法", "允许 Agent 输入文字", Icons.Rounded.Keyboard, SettingsPage.Ime),
         SettingsRowSpec("性能 · 截图压缩", "调节上传给 VLM 的截图大小", Icons.Rounded.Speed, SettingsPage.Performance),
         SettingsRowSpec("通知", "Agent 执行时的通知与横幅", Icons.Rounded.Notifications, SettingsPage.Notification),
+        SettingsRowSpec("悬浮面板", "执行任务时的浮动 Plan + Trace 卡片", Icons.Rounded.OpenInNew, SettingsPage.Overlay),
         SettingsRowSpec("运行记录", "保留每次执行轨迹", Icons.Rounded.Article, SettingsPage.Traces),
         SettingsRowSpec("外观", "主题与强调色", Icons.Rounded.Palette, SettingsPage.Appearance),
         SettingsRowSpec("关于", "版本、协议、项目", Icons.Rounded.Info, SettingsPage.About),
@@ -1348,6 +1352,61 @@ private fun NotificationPage() {
             onCheckedChange = RuntimeContainer.settings::setNotifyEachStep,
         )
         InfoCard("如果系统拦截了 ClawGUI 的通知,请到系统设置 → 应用 → ClawGUI → 通知,确认 channel 「Agent 执行状态」「Agent 单步动作」都打开。")
+    }
+}
+
+@Composable
+private fun OverlayPage() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val enabled by RuntimeContainer.settings.overlayEnabled.collectAsStateWithLifecycle()
+    val alphaPct by RuntimeContainer.settings.overlayAlphaPct.collectAsStateWithLifecycle()
+    val granted = remember { mutableStateOf(android.provider.Settings.canDrawOverlays(ctx)) }
+    OnResume { granted.value = android.provider.Settings.canDrawOverlays(ctx) }
+
+    Column(
+        Modifier.fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        StatusCard(
+            label = "悬浮窗权限",
+            value = if (granted.value) "已授予" else "尚未授予(开关无效)",
+            tone = if (granted.value) StatusTone.Ok else StatusTone.Error,
+        )
+        if (!granted.value) {
+            androidx.compose.material3.Button(
+                onClick = {
+                    runCatching {
+                        val intent = android.content.Intent(
+                            android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            android.net.Uri.parse("package:${ctx.packageName}"),
+                        ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        ctx.startActivity(intent)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("打开系统设置授予权限") }
+        }
+        SettingsToggleRow(
+            title = "启用悬浮面板",
+            subtitle = "PhoneAgent 执行时,在其它 App 之上显示任务计划 + 执行轨迹",
+            checked = enabled,
+            onCheckedChange = RuntimeContainer.settings::setOverlayEnabled,
+        )
+        SectionLabel("透明度 ${alphaPct}%")
+        androidx.compose.material3.Slider(
+            value = alphaPct.toFloat(),
+            onValueChange = { RuntimeContainer.settings.setOverlayAlphaPct(it.toInt()) },
+            valueRange = 40f..100f,
+            steps = 11,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        InfoCard(
+            "悬浮面板会在 PhoneAgent 启动任务后自动出现,显示当前 Plan 和最近几步动作,任务结束自动隐藏。\n" +
+                "拖头部可移动位置,点 × 可在当前任务内手动隐藏。\n" +
+                "当 Agent 提出 Ask 时,悬浮面板里会直接出输入框,无需切回 ClawGUI。"
+        )
     }
 }
 
