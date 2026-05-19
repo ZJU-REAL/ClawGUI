@@ -29,6 +29,7 @@ class GuiOwlAdapter : ModelAdapter {
         context: List<Map<String, Any?>>,
         lang: String,
         extraUserImages: List<String>,
+        isFirst: Boolean,
     ): List<Map<String, Any?>> {
         @Suppress("UNUSED_VARIABLE") val ignoredRefs = extraUserImages
         val messages = mutableListOf<Map<String, Any?>>()

@@ -31,6 +31,11 @@ interface ModelAdapter {
         context: List<Map<String, Any?>>,
         lang: String = "cn",
         extraUserImages: List<String> = emptyList(),
+        /** True for step 1 of every task. The adapter uses this to emit the
+         *  plan-init framing even when context isn't empty (e.g. continueTask
+         *  reuses the cached PhoneAgent, so context is non-empty but the
+         *  model still needs to think of this as "step 1, plan from scratch"). */
+        isFirst: Boolean = false,
     ): List<Map<String, Any?>>
 
     fun parseResponse(response: String): Pair<String, String>

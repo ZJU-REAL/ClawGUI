@@ -25,6 +25,7 @@ class UITarsAdapter : ModelAdapter {
         context: List<Map<String, Any?>>,
         lang: String,
         extraUserImages: List<String>,
+        isFirst: Boolean,
     ): List<Map<String, Any?>> {
         @Suppress("UNUSED_VARIABLE") val ignoredRefs = extraUserImages
         val messages = context.toMutableList()

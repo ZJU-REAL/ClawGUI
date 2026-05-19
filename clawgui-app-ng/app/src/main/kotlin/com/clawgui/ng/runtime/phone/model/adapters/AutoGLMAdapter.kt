@@ -207,12 +207,18 @@ object AutoGLMAdapter : ModelAdapter {
         context: List<Map<String, Any?>>,
         lang: String,
         extraUserImages: List<String>,
+        isFirst: Boolean,
     ): List<Map<String, Any?>> {
         val messages = context.toMutableList()
         // step index = number of prior assistant turns already in context.
         val stepIndex = context.count { it["role"] == "assistant" } + 1
-        if (messages.isEmpty()) {
-            messages.add(MessageBuilder.createSystemMessage(PromptsZh.getSystemPrompt()))
+        if (isFirst) {
+            // Don't wipe out historic context — adapter.addHistory tracks
+            // cross-task memory we want preserved. But if the cached
+            // context lacks the system prompt (fresh agent), inject it.
+            if (messages.none { it["role"] == "system" }) {
+                messages.add(0, MessageBuilder.createSystemMessage(PromptsZh.getSystemPrompt()))
+            }
             val refHint = if (extraUserImages.isNotEmpty()) {
                 "\n用户随任务附带了 ${extraUserImages.size} 张参考图(显示在屏幕截图之后),需要把它们当作任务的输入材料(比如要发布的图片、要识别的内容)。\n"
             } else ""

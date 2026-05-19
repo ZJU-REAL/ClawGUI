@@ -131,7 +131,14 @@ class PhoneAgent(
             "content" to listOf(mapOf("type" to "text", "text" to "** 后续任务 **\n$task")),
         ))
         modelClient.adapter.addHistory("[用户追加] $task")
-        return executeStep(userPrompt = task, isFirst = false, userImages = userImages)
+        // isFirst = true so this step skips the screenshot (the model is back
+        // on ClawGUI's own surface between tasks, capturing it would just
+        // teach the model to poke at our own UI) AND so the adapter's first-
+        // step framing kicks in to force a fresh plan. context is non-empty,
+        // so the adapter still gets the prior turns' assistant content as
+        // memory — we just don't re-enter "look at screen" mode until the
+        // model emits Launch / Home / Ask.
+        return executeStep(userPrompt = task, isFirst = true, userImages = userImages)
     }
 
     fun reset() {
@@ -199,6 +206,7 @@ class PhoneAgent(
             context = context,
             lang = agentConfig.lang,
             extraUserImages = userImages,
+            isFirst = isFirst,
         )
         context.clear()
         context.addAll(messages)
@@ -222,7 +230,7 @@ class PhoneAgent(
         // and forcing a no-op Wait so the loop spins one more step. Bail
         // only if two parses fail back-to-back; otherwise transient model
         // formatting glitches end every long task at step 1.
-        val action = try {
+        val parsedActionAttempt = try {
             val parsed = ActionParser.parse(actionStr)
             consecutiveParseFailures = 0
             parsed
@@ -246,6 +254,28 @@ class PhoneAgent(
                 mapOf("_metadata" to "do", "action" to "Wait", "duration" to "1 seconds")
             }
         }
+
+        // First-step action guard: enforce the "step 1 only Launch / Home /
+        // Ask / finish" rule at runtime, not just via prompt. Some models
+        // ignore the textual restriction and emit Tap / Swipe straight
+        // away — without this guard those would operate on whatever app
+        // happens to be foregrounded (almost always ClawGUI itself, since
+        // the agent hasn't switched yet). We swap the offending action
+        // for a Wait + system correction so the model retries.
+        val action = if (isFirst) {
+            val name = parsedActionAttempt["action"] as? String
+            val meta = parsedActionAttempt["_metadata"]
+            val allowed = name == "Launch" || name == "Home" || name == "Ask" || meta == "finish"
+            if (!allowed) {
+                logger.warning("First-step guard intercepted action=$name; forcing replan.")
+                context.add(mapOf(
+                    "role" to "system",
+                    "content" to "第 1 步是规划步,屏幕还没切到目标 App,不能用 Tap/Swipe/Type/Back/Wait。请重写 `<answer>`,只能是 `do(action=\"Launch\", app=\"...\")`、`do(action=\"Home\")`、`do(action=\"Ask\", question=\"...\")` 或 `finish(message=\"...\")` 之一。",
+                ))
+                modelClient.adapter.addHistory("[首步纠错] 强制改为 Wait,等模型重写规划")
+                mapOf("_metadata" to "do", "action" to "Wait", "duration" to "1 seconds")
+            } else parsedActionAttempt
+        } else parsedActionAttempt
 
         // Remove image from last user message to save context
         if (context.isNotEmpty()) {

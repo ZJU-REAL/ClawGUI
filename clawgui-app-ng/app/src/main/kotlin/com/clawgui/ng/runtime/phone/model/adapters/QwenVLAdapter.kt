@@ -30,6 +30,7 @@ class QwenVLAdapter : ModelAdapter {
         context: List<Map<String, Any?>>,
         lang: String,
         extraUserImages: List<String>,
+        isFirst: Boolean,
     ): List<Map<String, Any?>> {
         // Qwen-VL 每轮重构,不沿用 context
         val messages = mutableListOf<Map<String, Any?>>()
