@@ -302,13 +302,13 @@ private fun CollapsedDot(
     onTap: () -> Unit,
     modifier: Modifier,
 ) {
-    // ZJU-blue translucent background — distinct from the white/charcoal
-    // expanded panel so the user knows this is "minimised" not "off".
-    // 28dp total feels closer to a status pill than a real button.
-    val dotBg = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
+    // Compact 20dp dot — barely larger than a status-bar icon. Solid blue
+    // background (ZJU primary, lightly translucent so the app behind
+    // peeks through) with a white spinner / sparkle.
+    val dotBg = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
     Box(
         modifier = modifier
-            .size(28.dp)
+            .size(20.dp)
             .clip(CircleShape)
             .background(dotBg)
             .clickable(onClick = onTap),
@@ -316,15 +316,15 @@ private fun CollapsedDot(
     ) {
         if (streaming) {
             CircularProgressIndicator(
-                strokeWidth = 1.6.dp,
+                strokeWidth = 1.4.dp,
                 color = Color.White,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(10.dp),
             )
         } else {
             Icon(
                 Icons.Rounded.AutoAwesome, null,
                 tint = Color.White,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(10.dp),
             )
         }
     }
