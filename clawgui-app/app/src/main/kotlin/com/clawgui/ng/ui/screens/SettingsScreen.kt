@@ -1119,7 +1119,6 @@ private suspend fun pollShizukuReady(timeoutMs: Long): Boolean {
 @Composable
 private fun ImePage() {
     var status by remember { mutableStateOf(probeIme()) }
-    val ctx = androidx.compose.ui.platform.LocalContext.current
     OnResume { status = probeIme() }
     Column(
         Modifier.fillMaxSize()
@@ -1130,7 +1129,9 @@ private fun ImePage() {
         StatusCard(
             label = "ClawGUI 输入法",
             value = status,
-            // Enabled is enough — agent will auto-switch on demand.
+            // Enabled alone is enough — Agent switches to it before
+            // typing and switches back when done, so the "selected"
+            // state isn't something the user needs to manage.
             tone = if (status.startsWith("已启用")) StatusTone.Ok else StatusTone.Warning,
         )
         androidx.compose.material3.Button(
@@ -1141,34 +1142,24 @@ private fun ImePage() {
                 status = probeIme()
             },
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("① 打开系统输入法设置,启用「ClawGUI Input」") }
-        androidx.compose.material3.OutlinedButton(
-            onClick = {
-                val imm = ctx.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
-                runCatching { imm.showInputMethodPicker() }
-                status = probeIme()
-            },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("② 弹出「切换输入法」选择器,选 ClawGUI") }
+        ) { Text("打开系统输入法设置,勾选「ClawGUI Input」") }
         androidx.compose.material3.TextButton(
             onClick = { status = probeIme() },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("重新检测状态") }
-        InfoCard("Agent 操作手机时会自动把输入法切到 ClawGUI,完成后切回你的常用输入法。如果列表里看不到「ClawGUI Input」,先卸载重装本应用。")
+        InfoCard(
+            "只需在系统输入法设置里**启用**「ClawGUI Input」。" +
+                "执行任务时 Agent 会自动把输入法切到 ClawGUI,任务结束自动切回你的常用输入法 —— 你不用手动切。\n\n" +
+                "如果系统输入法列表里看不到「ClawGUI Input」,先卸载重装本应用。"
+        )
     }
 }
 
 private fun probeIme(): String = runCatching {
     val ime = RuntimeContainer.ime
     val enabled = runCatching { ime.isOurIMEEnabled() }.getOrDefault(false)
-    val current = runCatching { ime.currentIme().orEmpty() }.getOrDefault("")
-    val our = com.clawgui.ng.runtime.ime.ClawNgIME.IME_COMPONENT
-    val isCurrent = current == our || current.contains(our.substringBefore('/'), ignoreCase = true)
-    when {
-        enabled && isCurrent -> "已启用并选中(Agent 输入将走 ClawGUI)"
-        enabled -> "已启用 · 但默认输入法是其它(Agent 执行时会自动切换)"
-        else -> "未启用 — 请到系统输入法设置勾选"
-    }
+    if (enabled) "已启用(执行任务时 Agent 会自动切换)"
+    else "未启用 — 请到系统输入法设置勾选"
 }.getOrElse { "无法检测(${it.message ?: "error"})" }
 
 @Composable

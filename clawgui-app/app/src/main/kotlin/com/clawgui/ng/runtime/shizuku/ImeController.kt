@@ -21,9 +21,32 @@ class ImeController(private val device: DeviceController) {
         return out.takeIf { it.isNotEmpty() && it != "null" }
     }
 
-    /** 自家 IME 是否已被系统启用(在用户启用列表里)。 */
+    /**
+     * 自家 IME 是否已被系统启用(在用户的启用列表里)。
+     *
+     * 优先走 Android Framework 的 `InputMethodManager.getEnabledInputMethodList()` —
+     * 这是个无需特权的标准 API,只要 App 进程在前台就能拿到真实状态。
+     * shell 命令 `ime list -s` 作为 fallback:有些 ROM(MIUI)在后台调用
+     * Framework API 会返回空,这时再退回 shell;没有 Shizuku/wadb 时 shell
+     * 也会失败,只能两个都信不过 → 报 false,引导用户去 Android 系统设置勾选。
+     */
     fun isOurIMEEnabled(): Boolean {
-        val out = device.exec("ime list -s").trim()
+        val ourComponent = android.content.ComponentName.unflattenFromString(ourId)
+        if (ourComponent != null) {
+            val frameworkHit = runCatching {
+                val imm = com.clawgui.ng.runtime.RuntimeContainer.appContext
+                    .getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+                imm.enabledInputMethodList.any { info ->
+                    info.component == ourComponent ||
+                        info.id == ourId ||
+                        // Some ROMs report the id without the leading dot-prefix
+                        info.id.endsWith(ourComponent.className)
+                }
+            }.getOrDefault(false)
+            if (frameworkHit) return true
+        }
+        // Fallback to shell — only useful when wadb / Shizuku is granted.
+        val out = runCatching { device.exec("ime list -s").trim() }.getOrDefault("")
         return out.lineSequence().any { it.trim() == ourId }
     }
 
