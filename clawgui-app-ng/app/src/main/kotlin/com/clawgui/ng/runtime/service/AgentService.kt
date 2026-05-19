@@ -13,7 +13,6 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.clawgui.ng.data.ExecutionState
 import com.clawgui.ng.runtime.RuntimeContainer
-import com.clawgui.ng.runtime.overlay.DynamicIslandOverlay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,7 +35,6 @@ import kotlinx.coroutines.launch
  */
 class AgentService : Service() {
 
-    private var overlay: DynamicIslandOverlay? = null
     private var livePanel: com.clawgui.ng.runtime.overlay.AgentLiveOverlay? = null
     private var scope: CoroutineScope? = null
 
@@ -52,14 +50,11 @@ class AgentService : Service() {
         }
 
         // Overlay needs SYSTEM_ALERT_WINDOW; if it's not granted we silently
-        // skip the floating island rather than crash.
+        // skip the floating panel rather than crash. The compact
+        // DynamicIsland pill was dropped — its dark surface conflicted
+        // visually with the larger AgentLive panel and showed duplicate
+        // info. AgentLive carries the same status + more.
         if (canDrawOverlays(this)) {
-            try {
-                overlay = DynamicIslandOverlay(this).also { it.show() }
-            } catch (t: Throwable) {
-                Log.w(TAG, "overlay show failed", t)
-                overlay = null
-            }
             // Keep a single AgentLiveOverlay instance; flip it visible only
             // while there's an active live snapshot. Showing it eagerly with
             // a null snapshot leaves an empty 0-sized window hanging around.
@@ -210,8 +205,6 @@ class AgentService : Service() {
     }
 
     override fun onDestroy() {
-        runCatching { overlay?.hide() }
-        overlay = null
         runCatching { livePanel?.hide() }
         livePanel = null
         scope?.cancel(); scope = null
