@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ClawGUI"
+rootProject.name = "ClawGUI-NG"
 include(":app")

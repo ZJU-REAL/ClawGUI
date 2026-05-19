@@ -1,4 +1,4 @@
-name: clawgui-app-ng release
+name: clawgui-app release
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: clawgui-app-ng
+        working-directory: clawgui-app
 
     steps:
       - uses: actions/checkout@v4
@@ -69,8 +69,8 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: clawgui-app-ng-release-apk
-          path: clawgui-app-ng/${{ steps.apk.outputs.path }}
+          name: clawgui-app-release-apk
+          path: clawgui-app/${{ steps.apk.outputs.path }}
           if-no-files-found: error
           retention-days: 30
 
@@ -80,7 +80,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/clawgui-app-v')
         uses: softprops/action-gh-release@v2
         with:
-          files: clawgui-app-ng/${{ steps.apk.outputs.path }}
+          files: clawgui-app/${{ steps.apk.outputs.path }}
           name: ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true

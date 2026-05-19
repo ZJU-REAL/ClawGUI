@@ -1,27 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Main app theme. light-only(和 Compose ClawGUITheme 对齐)。
-         enableEdgeToEdge 会在 onCreate 覆盖 statusBar/navigationBar 的 style,这里
-         的 XML 值只用在 Activity 起来到 Compose 接管那一帧的兜底,所以统一写透明
-         + light icon,避免跟 edge-to-edge 状态下的 Compose 背景色对不上而闪一下。 -->
-    <style name="Theme.ClawGUI" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.ClawNg" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">true</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightNavigationBar">true</item>
-        <item name="android:windowBackground">@color/app_background</item>
-        <item name="android:colorPrimary">@color/primary</item>
-        <item name="android:colorPrimaryDark">@color/primary_dark</item>
-        <item name="android:colorAccent">@color/primary</item>
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
-    <!-- Splash screen theme (Android 12+)。品牌蓝保留,白色 foreground icon 在蓝底
-         上可读;和 Theme.ClawGUI 的 cream windowBackground 之间会有一瞬蓝→cream
-         过渡,属可接受的启动 flash,换品牌再统一处理。 -->
-    <style name="Theme.ClawGUI.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-        <item name="windowSplashScreenIconBackgroundColor">@color/splash_background</item>
-        <item name="postSplashScreenTheme">@style/Theme.ClawGUI</item>
+    <style name="Theme.ClawNg.Splash" parent="Theme.ClawNg">
+        <item name="android:windowBackground">@drawable/splash_drawable</item>
     </style>
 </resources>

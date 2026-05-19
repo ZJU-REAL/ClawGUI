@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
  *
  * `MockAgentRuntime` (used by ChatViewModel today) stages a fake think→act
  * loop just so the UI is exercisable. Replacing it amounts to plugging in
- * `LegacyAgentRuntime` (port of clawgui-app's `App.kt` + `nano.agent.AgentLoop`)
+ * `LegacyAgentRuntime` (port of the v1 client's `App.kt` + `nano.agent.AgentLoop`)
  * — see docs/PORTING.md.
  */
 interface AgentRuntime {

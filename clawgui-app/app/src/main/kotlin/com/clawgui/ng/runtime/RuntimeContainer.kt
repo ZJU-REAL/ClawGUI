@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 /**
- * Lightweight service-locator. Replaces the App.kt monolith from clawgui-app.
+ * Lightweight service-locator. Replaces the App.kt monolith from the v1 client.
  * Each repo is constructed once; future runtime port will inject a Brain agent
  * and Phone agent here and bridge their state into the same flows.
  */

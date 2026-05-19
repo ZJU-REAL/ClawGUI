@@ -1,4 +1,11 @@
-# Keep Shizuku UserService classes
--keep class com.clawgui.android.** { *; }
--keep class com.clawgui.android.IShellService { *; }
--keep class com.clawgui.android.IShellService$Stub { *; }
+# Keep Kotlin serialization
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
+
+# Shizuku
+-keep class rikka.shizuku.** { *; }
+
+# OkHttp / SSE
+-dontwarn okhttp3.internal.platform.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**

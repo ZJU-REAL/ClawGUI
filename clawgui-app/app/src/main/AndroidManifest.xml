@@ -2,29 +2,24 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <!-- Shizuku -->
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
-
-    <!-- Foreground service (for agent execution) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- Keep screen on during agent run -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-
-    <!-- System overlay (cross-app execution status) -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-
-    <!-- Query installed apps for openApp() -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <!-- Chat image attachments: camera capture + gallery picker. We don't
+         declare READ_MEDIA_IMAGES because PickVisualMedia (Android photo
+         picker) doesn't require it — it returns a one-shot URI grant. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
-    <!-- Declare intent queries for app discovery -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -38,17 +33,26 @@
     </queries>
 
     <application
-        android:name=".App"
-        android:allowBackup="true"
+        android:name=".ClawNgApp"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.ClawGUI"
+        android:theme="@style/Theme.ClawNg"
         android:networkSecurityConfig="@xml/network_security_config"
         tools:targetApi="34">
 
-        <!-- Shizuku Provider (required for Shizuku to work) -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_provider_paths" />
+        </provider>
+
         <provider
             android:name="rikka.shizuku.ShizukuProvider"
             android:authorities="${applicationId}.shizuku"
@@ -60,18 +64,17 @@
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
-            android:windowSoftInputMode="adjustNothing"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
-            android:theme="@style/Theme.ClawGUI.Splash">
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:theme="@style/Theme.ClawNg">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- Agent foreground service -->
         <service
-            android:name=".service.AgentService"
+            android:name=".runtime.service.AgentService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
@@ -79,10 +82,13 @@
                 android:value="automation_agent" />
         </service>
 
-        <!-- Input method service: lets the agent inject arbitrary unicode into focused EditText -->
         <service
-            android:name=".core.ime.ClawguiIME"
-            android:label="@string/app_name"
+            android:name=".runtime.service.ShellService"
+            android:exported="false" />
+
+        <service
+            android:name=".runtime.ime.ClawNgIME"
+            android:label="@string/ime_label"
             android:exported="true"
             android:permission="android.permission.BIND_INPUT_METHOD">
             <intent-filter>
@@ -93,6 +99,9 @@
                 android:resource="@xml/ime_method" />
         </service>
 
-    </application>
+        <receiver
+            android:name=".runtime.shizuku.wadb.PairingReceiver"
+            android:exported="false" />
 
+    </application>
 </manifest>

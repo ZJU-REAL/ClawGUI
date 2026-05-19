@@ -1,24 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Brand assets (launcher icon + Android 12+ splash). 和 Compose 主题的琥珀色
-         独立一套,保留蓝色品牌识别;换品牌时单独迁这几个。 -->
-    <color name="ic_launcher_background">#1976D2</color>
-    <color name="splash_background">#1565C0</color>
-
-    <!-- Activity windowBackground / 系统栏 fallback。值跟 Compose colorScheme.background
-         /.primary 对齐 —— Activity 刚起、Compose 还没 inflate 那一帧用这个画,避免
-         冒出和 Compose 主题不一致的颜色(历史 bug:OnboardingScreen 没 Surface
-         兜底时会直接露 windowBackground,是黑底黑字的根因)。 -->
-    <color name="app_background">#FAF9F5</color>
-    <color name="primary">#D97706</color>
-    <color name="primary_dark">#B45309</color>
-
-    <!-- Status(语义色,供将来 XML 组件引用) -->
-    <color name="success">#4CAF50</color>
-    <color name="error">#F44336</color>
-    <color name="warning">#FF9800</color>
-
-    <!-- Overlay(悬浮球专用,独立配色;overlay 背景本身是深色 tint,这里走白字) -->
-    <color name="overlay_text_primary">#FFFFFFFF</color>
-    <color name="overlay_text_label">#CCDDDDFF</color>
+    <color name="splash_background">#F1F4FA</color>
+    <color name="brand_primary">#003F88</color>
+    <color name="overlay_scrim">#66000000</color>
+    <color name="ic_launcher_background">#003F88</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
 </resources>

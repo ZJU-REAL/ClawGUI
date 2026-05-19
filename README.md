@@ -147,7 +147,7 @@ ClawGUI-Agent closes the loop from training to production. Built on OpenClaw and
 
 ### 📱 ClawGUI-APP — On-Device Deploy
 
-> 📁 [`clawgui-app/`](clawgui-app/) · 📖 [Full Documentation](clawgui-app/README.md) · [中文安装指南](clawgui-app/SETUP.md) · [English Setup](clawgui-app/SETUP_EN.md)
+> 📁 [`clawgui-app/`](clawgui-app/) · 📖 [Setup Guide](clawgui-app/SETUP.md)
 
 ClawGUI-APP runs the full ClawGUI "brain + GUI agent" stack directly on one Android phone, removing the old split architecture where a desktop host orchestrates tasks and the phone only executes them. Built on Shizuku for high-privilege, non-root device control.
 
@@ -157,7 +157,7 @@ ClawGUI-APP runs the full ClawGUI "brain + GUI agent" stack directly on one Andr
 - **Conversation + automation** — Sessions, long-term memory, external channels (Feishu), and trace replay
 - **Built for real usage** — Floating overlay status, built-in IME, session persistence, and diagnostics
 
-→ **[Get started with ClawGUI-APP](clawgui-app/README.md)**
+→ **[Build ClawGUI-APP](clawgui-app/SETUP.md)**
 
 
 ## 🎯 Roadmap
