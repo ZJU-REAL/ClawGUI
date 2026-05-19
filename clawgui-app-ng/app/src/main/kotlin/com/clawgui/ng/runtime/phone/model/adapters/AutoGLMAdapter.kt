@@ -83,26 +83,62 @@ object AutoGLMAdapter : ModelAdapter {
             val thinking = cleanThinking(rawThink)
             return thinking to sanitizeActionString(rawAction)
         }
-        // Fallbacks for models that drop the XML wrappers entirely. Use the
-        // *last* occurrence so any quoted examples in the lead-in can't
-        // shadow the real chosen action.
-        val finishIdx = response.lastIndexOf("finish(message=")
-        if (finishIdx >= 0) {
-            return cleanThinking(response.substring(0, finishIdx).trim()) to
-                sanitizeActionString(response.substring(finishIdx))
+        // Fallbacks for models that drop the XML wrappers entirely. Search
+        // for any `do(` / `finish(` token, tolerating leading whitespace
+        // (`do (`) and single-quoted args. lastIndexOf so quoted examples
+        // earlier in <think> can't shadow the real chosen action.
+        val finishRe = Regex("""finish\s*\(""")
+        val finishMatch = finishRe.findAll(response).lastOrNull()
+        if (finishMatch != null) {
+            val start = finishMatch.range.first
+            return cleanThinking(response.substring(0, start).trim()) to
+                sanitizeActionString(response.substring(start))
         }
-        val doIdx = response.lastIndexOf("do(action=")
-        if (doIdx >= 0) {
-            return cleanThinking(response.substring(0, doIdx).trim()) to
-                sanitizeActionString(response.substring(doIdx))
+        val doRe = Regex("""do\s*\(\s*action""")
+        val doMatch = doRe.findAll(response).lastOrNull()
+        if (doMatch != null) {
+            val start = doMatch.range.first
+            return cleanThinking(response.substring(0, start).trim()) to
+                sanitizeActionString(response.substring(start))
         }
-        // Model went fully free-form — no XML, no command. Don't pretend
-        // there's an action. Surface a synthetic finish so the loop bails
-        // immediately with the rambling as the visible message, instead of
-        // looping while ActionParser fails over and over.
-        val cleaned = cleanThinking(response).take(400).ifBlank { "模型没有按要求的格式输出。" }
-        return cleaned to "finish(message=\"模型未按格式输出。原文摘要:${cleaned.take(120)}\")"
+        // JSON-shape fallback: `{"action": "Launch", ...}` — try to read it
+        // as a top-level call and synthesise `do(action="...", ...)`.
+        val jsonStart = response.lastIndexOf("{\"action\"")
+        if (jsonStart >= 0) {
+            val end = response.indexOf("}", jsonStart)
+            if (end > jsonStart) {
+                val synth = jsonToDo(response.substring(jsonStart, end + 1))
+                if (synth != null) {
+                    return cleanThinking(response.substring(0, jsonStart).trim()) to synth
+                }
+            }
+        }
+        // Model wrote thinking but no answer at all — common when it
+        // believes the task is already done. Treat the cleaned thinking
+        // as the final summary instead of yelling "格式错误".
+        val cleaned = cleanThinking(response).take(400)
+        return if (cleaned.isNotBlank()) {
+            cleaned to "finish(message=\"${cleaned.take(140).replace("\"", "'")}\")"
+        } else {
+            "" to "finish(message=\"任务结束\")"
+        }
     }
+
+    private fun jsonToDo(blob: String): String? = runCatching {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+            .parseToJsonElement(blob)
+        val obj = json as? kotlinx.serialization.json.JsonObject ?: return null
+        val action = (obj["action"] as? kotlinx.serialization.json.JsonPrimitive)?.content
+            ?: return null
+        val sb = StringBuilder("do(action=\"$action\"")
+        obj.entries.forEach { (k, v) ->
+            if (k == "action") return@forEach
+            val s = (v as? kotlinx.serialization.json.JsonPrimitive)?.content ?: return@forEach
+            sb.append(", $k=\"$s\"")
+        }
+        sb.append(")")
+        sb.toString()
+    }.getOrNull()
 
     /**
      * Normalise a raw `<answer>` body before ActionParser sees it. Handles
