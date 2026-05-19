@@ -60,15 +60,23 @@ class AgentService : Service() {
                 Log.w(TAG, "overlay show failed", t)
                 overlay = null
             }
-            try {
-                livePanel = com.clawgui.ng.runtime.overlay.AgentLiveOverlay(this).also { it.show() }
-            } catch (t: Throwable) {
-                Log.w(TAG, "live-panel overlay show failed", t)
-                livePanel = null
-            }
+            // Keep a single AgentLiveOverlay instance; flip it visible only
+            // while there's an active live snapshot. Showing it eagerly with
+            // a null snapshot leaves an empty 0-sized window hanging around.
+            livePanel = com.clawgui.ng.runtime.overlay.AgentLiveOverlay(this)
         }
 
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        // Show / hide the live floating panel based on whether the
+        // ChatViewModel has an active snapshot. Runs in parallel with the
+        // notification-update collect below.
+        scope!!.launch {
+            RuntimeContainer.agentLive.collect { snap ->
+                val panel = livePanel ?: return@collect
+                if (snap != null) runCatching { panel.show() }
+                else runCatching { panel.hide() }
+            }
+        }
         scope!!.launch {
             var lastNotifiedStep = -1
             RuntimeContainer.executionStatus.collect { status ->

@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         maybeAskNotifications()
+        maybeAskOverlayPermission()
         setContent {
             ClawNgTheme {
                 Surface(
@@ -66,6 +67,28 @@ class MainActivity : ComponentActivity() {
         ) == PackageManager.PERMISSION_GRANTED
         if (!granted) {
             runCatching { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }
+        }
+    }
+
+    /**
+     * Ask once for SYSTEM_ALERT_WINDOW. Without it the agent's floating
+     * Plan + Trace panel can't render above other apps. Android requires
+     * the user to grant this through the settings page — not a runtime
+     * permission — so we hop them straight there. Silently no-op when
+     * already granted; we don't pester users who refused before.
+     */
+    private fun maybeAskOverlayPermission() {
+        if (android.provider.Settings.canDrawOverlays(this)) return
+        val askedKey = "asked_overlay_perm_v1"
+        val prefs = getSharedPreferences("clawng_settings", MODE_PRIVATE)
+        if (prefs.getBoolean(askedKey, false)) return
+        prefs.edit().putBoolean(askedKey, true).apply()
+        runCatching {
+            val intent = android.content.Intent(
+                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                android.net.Uri.parse("package:$packageName"),
+            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
         }
     }
 }

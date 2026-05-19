@@ -62,11 +62,6 @@ import com.clawgui.ng.data.PlanItemStatus
 import com.clawgui.ng.data.StepRecord
 import com.clawgui.ng.runtime.RuntimeContainer
 import com.clawgui.ng.ui.theme.ClawNgTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
@@ -88,7 +83,6 @@ class AgentLiveOverlay(private val context: Context) {
 
     private val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private var rootView: View? = null
-    private var scope: CoroutineScope? = null
     private val lifecycleOwner = OverlayLifecycleOwner()
 
     fun show() {
@@ -106,21 +100,14 @@ class AgentLiveOverlay(private val context: Context) {
         }
         val params = buildParams()
         attachDrag(composeView, params)
-        wm.addView(composeView, params)
+        runCatching { wm.addView(composeView, params) }
         rootView = composeView
-
-        scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-        scope!!.launch {
-            RuntimeContainer.agentLive.collect { snap ->
-                if (snap == null) hide()
-            }
-        }
+        // AgentService owns the show/hide policy via the agentLive flow.
     }
 
     fun hide() {
         rootView?.let { runCatching { wm.removeViewImmediate(it) } }
         rootView = null
-        scope?.cancel(); scope = null
         lifecycleOwner.stop()
     }
 
