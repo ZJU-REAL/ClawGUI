@@ -82,7 +82,9 @@ object AskUserOverlay {
 
     private var wm: WindowManager? = null
     private var rootView: android.view.View? = null
-    private val lifecycleOwner = OverlayLifecycleOwner()
+    // One owner per Ask invocation — see AgentLiveOverlay for the lifecycle
+    // rationale.
+    private var lifecycleOwner: OverlayLifecycleOwner? = null
     private var scope: CoroutineScope? = null
 
     /** Reactive seconds-waited counter so the UI can show "已等待 32s" without
@@ -110,10 +112,11 @@ object AskUserOverlay {
         }
         wm = appCtx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        lifecycleOwner.start()
+        val owner = OverlayLifecycleOwner().also { it.start() }
+        lifecycleOwner = owner
         val composeView = ComposeView(appCtx).apply {
-            setViewTreeLifecycleOwner(lifecycleOwner)
-            setViewTreeSavedStateRegistryOwner(lifecycleOwner)
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
             setContent {
                 ClawNgTheme {
                     val secs by elapsedSec.collectAsState()
@@ -147,7 +150,8 @@ object AskUserOverlay {
         rootView = null
         tickJob?.cancel(); tickJob = null
         scope?.cancel(); scope = null
-        lifecycleOwner.stop()
+        lifecycleOwner?.stop()
+        lifecycleOwner = null
     }
 
     private fun buildParams(): WindowManager.LayoutParams {

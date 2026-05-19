@@ -45,14 +45,18 @@ class DynamicIslandOverlay(private val context: Context) {
     private var scope: CoroutineScope? = null
     private var dismissJob: Job? = null
 
-    private val lifecycleOwner = OverlayLifecycleOwner()
+    // One-shot per show() — see AgentLiveOverlay for the rationale: a
+    // LifecycleRegistry that's been ON_DESTROY'd can't transition back to
+    // RESUMED, breaking the Compose host on a second show.
+    private var lifecycleOwner: OverlayLifecycleOwner? = null
 
     fun show() {
         if (rootView != null) return
-        lifecycleOwner.start()
+        val owner = OverlayLifecycleOwner().also { it.start() }
+        lifecycleOwner = owner
         val composeView = ComposeView(context).apply {
-            setViewTreeLifecycleOwner(lifecycleOwner)
-            setViewTreeSavedStateRegistryOwner(lifecycleOwner)
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
             setContent {
                 ClawNgTheme {
                     val status by RuntimeContainer.executionStatus.collectAsState()
@@ -86,7 +90,8 @@ class DynamicIslandOverlay(private val context: Context) {
         rootView = null
         scope?.cancel(); scope = null
         dismissJob?.cancel(); dismissJob = null
-        lifecycleOwner.stop()
+        lifecycleOwner?.stop()
+        lifecycleOwner = null
     }
 
     private fun scheduleDismiss(delayMs: Long) {

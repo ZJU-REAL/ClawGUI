@@ -83,14 +83,19 @@ class AgentLiveOverlay(private val context: Context) {
 
     private val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private var rootView: View? = null
-    private val lifecycleOwner = OverlayLifecycleOwner()
+    // LifecycleRegistry is one-shot — once it transitions to ON_DESTROY it
+    // refuses to come back to RESUMED, which means a hide → show cycle
+    // breaks the Compose host. Allocate a fresh owner per show() so the
+    // state machine starts clean every time.
+    private var lifecycleOwner: OverlayLifecycleOwner? = null
 
     fun show() {
         if (rootView != null) return
-        lifecycleOwner.start()
+        val owner = OverlayLifecycleOwner().also { it.start() }
+        lifecycleOwner = owner
         val composeView = ComposeView(context).apply {
-            setViewTreeLifecycleOwner(lifecycleOwner)
-            setViewTreeSavedStateRegistryOwner(lifecycleOwner)
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
             setContent {
                 ClawNgTheme {
                     val snap by RuntimeContainer.agentLive.collectAsState()
@@ -108,7 +113,8 @@ class AgentLiveOverlay(private val context: Context) {
     fun hide() {
         rootView?.let { runCatching { wm.removeViewImmediate(it) } }
         rootView = null
-        lifecycleOwner.stop()
+        lifecycleOwner?.stop()
+        lifecycleOwner = null
     }
 
     private fun buildParams(): WindowManager.LayoutParams {
@@ -179,16 +185,32 @@ private fun AgentLivePanel(
     val plan = snapshot.plan
     val trace = snapshot.trace
 
-    Box(modifier = Modifier.padding(8.dp)) {
-        Surface(
-            shape = RoundedCornerShape(18.dp),
-            // Semi-transparent so the user can still see the app behind.
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-            shadowElevation = 6.dp,
-            tonalElevation = 4.dp,
-            modifier = Modifier.widthIn(min = 220.dp, max = 320.dp),
-        ) {
-            Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+    // Detect dark theme so we pick a neutral panel color instead of letting
+    // Material3's tonal-elevation overlay tint everything blue in dark
+    // mode. We use a fixed near-black / near-white with deliberate alpha
+    // so the host app shows through.
+    val dark = androidx.compose.foundation.isSystemInDarkTheme()
+    val panelColor = if (dark)
+        androidx.compose.ui.graphics.Color(0xCC121417)   // ~80% opaque charcoal
+    else
+        androidx.compose.ui.graphics.Color(0xD9FFFFFF)   // ~85% opaque white
+    val onPanel = if (dark)
+        androidx.compose.ui.graphics.Color(0xFFE6E8EC)
+    else
+        androidx.compose.ui.graphics.Color(0xFF1A1C1E)
+
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.material3.LocalContentColor provides onPanel,
+    ) {
+        Box(modifier = Modifier.padding(8.dp)) {
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = panelColor,
+                shadowElevation = 8.dp,
+                tonalElevation = 0.dp,
+                modifier = Modifier.widthIn(min = 220.dp, max = 320.dp),
+            ) {
+                Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
                 Header(
                     plan = plan,
                     streaming = snapshot.streaming,
@@ -206,9 +228,10 @@ private fun AgentLivePanel(
                         TraceMini(trace, streaming = snapshot.streaming)
                     }
                 }
-            }
-        }
-    }
+                }   // Column
+            }       // Surface
+        }           // Box
+    }               // CompositionLocalProvider
 }
 
 @Composable
