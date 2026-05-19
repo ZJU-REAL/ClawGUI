@@ -39,6 +39,20 @@ object RuntimeContainer {
     private val _executionStatus = MutableStateFlow(ExecutionStatus())
     val executionStatus: StateFlow<ExecutionStatus> = _executionStatus
 
+    /**
+     * Snapshot of the live PhoneAgent run for the floating overlay. Null
+     * when no run is active — the overlay collapses / hides. ChatViewModel
+     * publishes a new value every step.
+     */
+    data class AgentLiveSnapshot(
+        val plan: com.clawgui.ng.data.Plan?,
+        val trace: List<com.clawgui.ng.data.StepRecord>,
+        val streaming: Boolean,
+    )
+    private val _agentLive = MutableStateFlow<AgentLiveSnapshot?>(null)
+    val agentLive: StateFlow<AgentLiveSnapshot?> = _agentLive
+    fun publishAgentLive(snapshot: AgentLiveSnapshot?) { _agentLive.value = snapshot }
+
     data class FeishuInbound(val sessionKey: String, val text: String, val messageId: String?)
     /** Bus for inbound Feishu messages — ChatViewModel listens to drive auto-reply / title summarisation. */
     val feishuInbound = kotlinx.coroutines.flow.MutableSharedFlow<FeishuInbound>(extraBufferCapacity = 16)

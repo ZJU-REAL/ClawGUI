@@ -660,6 +660,13 @@ class ChatViewModel(
                         actionTrace = trace.toList(),
                     )
                 }
+                RuntimeContainer.publishAgentLive(
+                    RuntimeContainer.AgentLiveSnapshot(
+                        plan = runningPlan,
+                        trace = trace.toList(),
+                        streaming = !step.finished,
+                    )
+                )
                 RuntimeContainer.publishExecution(
                     ExecutionStatus(
                         state = if (step.finished) ExecutionState.DONE else ExecutionState.ACTING,
@@ -753,6 +760,9 @@ class ChatViewModel(
             // MagicOS still ignores it sometimes, in which case the
             // execution-state notification's content-intent is the fallback.
             runCatching { bringClawGuiToFront() }
+            // Drop the live overlay snapshot — overlay collapses to small
+            // pill (or hides entirely) once the run is over.
+            RuntimeContainer.publishAgentLive(null)
         }
 
         sessions.updateLastMessage(key) {

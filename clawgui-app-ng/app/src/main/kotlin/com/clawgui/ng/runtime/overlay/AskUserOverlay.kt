@@ -174,25 +174,6 @@ object AskUserOverlay {
         }
     }
 
-    private class OverlayLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
-        private val lifecycleRegistry = LifecycleRegistry(this)
-        private val savedStateRegistryController = SavedStateRegistryController.create(this)
-        override val lifecycle: Lifecycle = lifecycleRegistry
-        override val savedStateRegistry: SavedStateRegistry =
-            savedStateRegistryController.savedStateRegistry
-
-        fun start() {
-            savedStateRegistryController.performRestore(null)
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
-        }
-        fun stop() {
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
-            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-        }
-    }
 }
 
 @Composable

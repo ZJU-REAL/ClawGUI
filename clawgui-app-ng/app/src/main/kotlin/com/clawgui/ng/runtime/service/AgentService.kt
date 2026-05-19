@@ -37,6 +37,7 @@ import kotlinx.coroutines.launch
 class AgentService : Service() {
 
     private var overlay: DynamicIslandOverlay? = null
+    private var livePanel: com.clawgui.ng.runtime.overlay.AgentLiveOverlay? = null
     private var scope: CoroutineScope? = null
 
     override fun onCreate() {
@@ -58,6 +59,12 @@ class AgentService : Service() {
             } catch (t: Throwable) {
                 Log.w(TAG, "overlay show failed", t)
                 overlay = null
+            }
+            try {
+                livePanel = com.clawgui.ng.runtime.overlay.AgentLiveOverlay(this).also { it.show() }
+            } catch (t: Throwable) {
+                Log.w(TAG, "live-panel overlay show failed", t)
+                livePanel = null
             }
         }
 
@@ -197,6 +204,8 @@ class AgentService : Service() {
     override fun onDestroy() {
         runCatching { overlay?.hide() }
         overlay = null
+        runCatching { livePanel?.hide() }
+        livePanel = null
         scope?.cancel(); scope = null
         super.onDestroy()
     }
