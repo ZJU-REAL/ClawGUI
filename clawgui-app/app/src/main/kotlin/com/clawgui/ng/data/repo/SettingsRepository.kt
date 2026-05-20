@@ -67,6 +67,13 @@ class SettingsRepository(private val store: SettingsStore) {
     val feishuAutoReply: StateFlow<Boolean> = _feishuAutoReply
     fun setFeishuAutoReply(v: Boolean) { _feishuAutoReply.value = v; store.feishuAutoReply = v }
 
+    private val _feishuRunAsGuiTask = MutableStateFlow(store.feishuRunAsGuiTask)
+    val feishuRunAsGuiTask: StateFlow<Boolean> = _feishuRunAsGuiTask
+    fun setFeishuRunAsGuiTask(v: Boolean) {
+        _feishuRunAsGuiTask.value = v
+        store.feishuRunAsGuiTask = v
+    }
+
     private val _appearance = MutableStateFlow(
         runCatching { Appearance.valueOf(store.appearance) }.getOrDefault(Appearance.SYSTEM)
     )

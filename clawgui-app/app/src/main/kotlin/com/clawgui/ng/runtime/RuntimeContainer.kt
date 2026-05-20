@@ -112,7 +112,17 @@ object RuntimeContainer {
         scope.launch {
             feishuInbound.collect { ev ->
                 runCatching { maybeAutoTitleApp(ev.sessionKey, ev.text) }
-                if (settings.feishuAutoReply.value) {
+                // Two paths:
+                //   feishuRunAsGuiTask = true  → drive PhoneAgent end-to-end
+                //                                (the bot actually does the
+                //                                 task on the phone and ships
+                //                                 final screenshot back).
+                //   feishuAutoReply = true  → fall back to a plain Brain
+                //                              text reply (legacy behaviour).
+                // GUI takes precedence; if it fires we don't also Brain-reply.
+                val ranGui = settings.feishuRunAsGuiTask.value &&
+                    runCatching { runFeishuAsGuiTask(ev) }.getOrDefault(false)
+                if (!ranGui && settings.feishuAutoReply.value) {
                     runCatching { answerFeishuInboundApp(ev) }
                 }
             }
@@ -151,6 +161,161 @@ object RuntimeContainer {
                 .take(15)
             if (title.isNotBlank()) sessions.rename(sessionKey, title)
         }
+    }
+
+    /**
+     * Drive a full PhoneAgent run for an inbound Feishu message. Ships text
+     * + image replies back to the same chat thread. Returns true when the
+     * GUI path actually executed (so the caller skips the legacy Brain
+     * text reply); false means we bailed early (no Vision credentials,
+     * device unauthorised, …) and the caller should fall back.
+     *
+     * Lean compared to ChatViewModel.runPhoneAgent: no IME juggling, no
+     * floating overlay, no return-to-foreground, no plan/trace UI binding.
+     * Those are for the in-app chat experience. The bot just needs to
+     * 1) run the task, 2) say what happened, 3) attach screenshot.
+     */
+    private suspend fun runFeishuAsGuiTask(ev: FeishuInbound): Boolean {
+        val chatId = ev.sessionKey.removePrefix("feishu:")
+        val visionId = settings.activeVision.value
+        val cred = settings.resolveCredentials(visionId)
+        if (cred == null || cred.apiKey.isBlank()) {
+            android.util.Log.w("FeishuGui", "vision creds missing — skip GUI run")
+            return false
+        }
+
+        // Authorisation gate: need Shizuku or wadb up. Skip silently when
+        // not ready — falling back to Brain auto-reply is still useful.
+        val wadbReady = runCatching {
+            val s = com.clawgui.ng.runtime.shizuku.wadb.WirelessAdb
+                .get(appContext).state.value
+            s is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Done ||
+                s is com.clawgui.ng.runtime.shizuku.wadb.WadbState.Connected
+        }.getOrDefault(false)
+        val shizukuReady = runCatching { device.isAvailable() }.getOrDefault(false)
+        if (!wadbReady && !shizukuReady) {
+            runCatching {
+                feishu.reply(
+                    chatId,
+                    "收到任务,但 ClawGUI 未授权设备控制(无线调试 / Shizuku 未连)。" +
+                        "请打开 ClawGUI → 设置 → 设备控制授权,完成任一方式后再试。",
+                    ev.messageId,
+                )
+            }
+            return true   // we *did* respond, just not by running the task
+        }
+
+        // Promote the process so Android 14 doesn't throttle the LLM
+        // request mid-task when the user isn't looking at ClawGUI.
+        runCatching {
+            com.clawgui.ng.runtime.service.AgentService.start(appContext)
+        }
+
+        // Replace the placeholder assistant turn (which observeFeishuInbound
+        // didn't create — we own the full session lifecycle here).
+        val placeholder = com.clawgui.ng.data.ChatMessage(
+            id = "msg_" + java.util.UUID.randomUUID().toString().take(8),
+            role = com.clawgui.ng.data.Role.ASSISTANT,
+            content = "正在执行任务…",
+            streaming = true,
+        )
+        sessions.appendMessage(ev.sessionKey, placeholder)
+
+        val agent = com.clawgui.ng.runtime.phone.PhoneAgent(
+            device = device,
+            modelConfig = com.clawgui.ng.runtime.phone.model.ModelConfig(
+                baseUrl = cred.baseUrl,
+                apiKey = cred.apiKey,
+                modelName = cred.model,
+                lang = "cn",
+            ),
+            agentConfig = com.clawgui.ng.runtime.phone.AgentConfig(
+                maxSteps = 60,
+                lang = "cn",
+            ),
+        )
+        val recorder = if (settings.tracesEnabled.value) {
+            com.clawgui.ng.runtime.trace.TraceRecorder.start(
+                ctx = appContext, task = ev.text, model = cred.model,
+                sessionKey = ev.sessionKey,
+            )
+        } else null
+        if (recorder != null) {
+            agent.traceSink = { idx, thinking, action, jpeg, ok, msg ->
+                val actionName = action["action"] as? String ?: "?"
+                recorder.appendStep(
+                    com.clawgui.ng.runtime.trace.TraceStep(
+                        index = idx, timestamp = System.currentTimeMillis(),
+                        thinking = thinking, actionName = actionName,
+                        actionJson = actionName, resultOk = ok, resultMessage = msg,
+                    ),
+                    jpeg,
+                )
+            }
+        }
+
+        val finalText: String = try {
+            agent.run(ev.text)
+        } catch (t: Throwable) {
+            "执行异常:${t.message ?: t::class.simpleName}"
+        } finally {
+            recorder?.finalize(finalMessage = "", success = true)
+            agent.cleanup()
+        }
+
+        sessions.updateLastMessage(ev.sessionKey) {
+            it.copy(content = finalText, streaming = false)
+        }
+
+        // Text reply.
+        runCatching { feishu.reply(chatId, finalText, ev.messageId) }
+
+        // Image reply (mode + fallback identical to ChatViewModel path).
+        runCatching {
+            val mode = settings.feishuReplyImageMode.value
+            android.util.Log.i("FeishuGui",
+                "image mode=$mode recorderRunDir=${recorder?.runDir}")
+            if (mode != com.clawgui.ng.data.repo.FeishuReplyImageMode.OFF) {
+                val bytes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    val direct = when (mode) {
+                        com.clawgui.ng.data.repo.FeishuReplyImageMode.COMPOSITE ->
+                            com.clawgui.ng.runtime.feishu.ReplyImageBuilder
+                                .compositeLong(recorder?.runDir, emptyList())
+                                ?: com.clawgui.ng.runtime.feishu.ReplyImageBuilder
+                                    .finalShot(recorder?.runDir)
+                        com.clawgui.ng.data.repo.FeishuReplyImageMode.FINAL_ONLY ->
+                            com.clawgui.ng.runtime.feishu.ReplyImageBuilder
+                                .finalShot(recorder?.runDir)
+                        else -> null
+                    }
+                    direct ?: run {
+                        val raw = runCatching { device.screenshot() }.getOrNull()
+                        raw?.let {
+                            com.clawgui.ng.runtime.phone.util.ScreenshotCompressor.compress(
+                                it,
+                                com.clawgui.ng.runtime.phone.util.ScreenshotCompressor.Quality.MEDIUM,
+                            )
+                        }
+                    }
+                }
+                android.util.Log.i("FeishuGui",
+                    "image bytes=${bytes?.size ?: 0}")
+                if (bytes != null && bytes.isNotEmpty()) {
+                    val err = feishu.replyImage(chatId, bytes, ev.messageId)
+                    if (err != null) {
+                        android.util.Log.w("FeishuGui", "replyImage failed: $err")
+                        feishu.appendDebug("Feishu replyImage 失败: $err")
+                    } else {
+                        feishu.appendDebug(
+                            "Feishu replyImage OK (${bytes.size / 1024} KB)"
+                        )
+                    }
+                } else {
+                    feishu.appendDebug("Feishu replyImage 跳过:没生成图")
+                }
+            }
+        }
+        return true
     }
 
     private suspend fun answerFeishuInboundApp(ev: FeishuInbound) {

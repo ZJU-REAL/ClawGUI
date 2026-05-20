@@ -126,6 +126,13 @@ class SettingsStore(context: Context) {
         get() = plain.getBoolean("feishu.autoReply", false)
         set(v) { plain.edit().putBoolean("feishu.autoReply", v).apply() }
 
+    /** Inbound Feishu message drives a PhoneAgent run end-to-end (bot
+     *  actually operates the phone and ships final screenshot back).
+     *  Defaults ON — that's the point of the bot integration. */
+    var feishuRunAsGuiTask: Boolean
+        get() = plain.getBoolean("feishu.runAsGuiTask", true)
+        set(v) { plain.edit().putBoolean("feishu.runAsGuiTask", v).apply() }
+
     var appearance: String
         get() = plain.getString("appearance", "SYSTEM").orEmpty()
         set(v) { plain.edit().putString("appearance", v).apply() }

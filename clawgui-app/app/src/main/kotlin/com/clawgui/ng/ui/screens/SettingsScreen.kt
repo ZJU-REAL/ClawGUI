@@ -466,6 +466,7 @@ private fun ChannelsPage() {
     val allowedIds by RuntimeContainer.settings.feishuAllowedOpenIds.collectAsStateWithLifecycle()
     val allowAll by RuntimeContainer.settings.feishuAllowAll.collectAsStateWithLifecycle()
     val autoReply by RuntimeContainer.settings.feishuAutoReply.collectAsStateWithLifecycle()
+    val runAsGui by RuntimeContainer.settings.feishuRunAsGuiTask.collectAsStateWithLifecycle()
     val channelState by RuntimeContainer.feishu.state.collectAsStateWithLifecycle()
     val lastError by RuntimeContainer.feishu.lastError.collectAsStateWithLifecycle()
     val feishuLog by RuntimeContainer.feishu.log.collectAsStateWithLifecycle()
@@ -575,8 +576,14 @@ private fun ChannelsPage() {
 
         SectionLabel("行为")
         SettingsToggleRow(
-            title = "自动用 Brain 回复",
-            subtitle = "(实验)收到消息后自动让 Brain 生成回复并发回;关闭时仅放进收件箱由你手动处理",
+            title = "把消息当 GUI 任务执行",
+            subtitle = "(推荐)bot 收到消息后让 PhoneAgent 直接在本机执行,完成后回结果 + 截图。需要先完成「设备控制授权」。",
+            checked = runAsGui,
+            onCheckedChange = RuntimeContainer.settings::setFeishuRunAsGuiTask,
+        )
+        SettingsToggleRow(
+            title = "自动用 Brain 文本回复",
+            subtitle = "GUI 任务执行失败 / 未授权时的兜底:让 Brain 生成一段文字回复。两者都关 = bot 不响应。",
             checked = autoReply,
             onCheckedChange = RuntimeContainer.settings::setFeishuAutoReply,
         )
