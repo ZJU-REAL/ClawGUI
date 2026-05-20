@@ -9,6 +9,8 @@ import com.lark.oapi.service.im.ImService
 import com.lark.oapi.service.im.v1.model.CreateMessageReq
 import com.lark.oapi.service.im.v1.model.CreateMessageReqBody
 import com.lark.oapi.service.im.v1.model.P2MessageReceiveV1
+import com.lark.oapi.service.im.v1.model.CreateImageReq
+import com.lark.oapi.service.im.v1.model.CreateImageReqBody
 import com.lark.oapi.service.im.v1.model.ReplyMessageReq
 import com.lark.oapi.service.im.v1.model.ReplyMessageReqBody
 import com.lark.oapi.ws.Client as WsClient
@@ -191,6 +193,84 @@ class FeishuChannel(
                 e.message ?: e::class.simpleName ?: "未知错误"
             }
         }
+
+    /**
+     * Upload [imageBytes] as a Feishu message image and post it back to
+     * [chatId] (threaded under [messageId] when present, otherwise a fresh
+     * message in the chat). Two-step:
+     *   1. POST image_type=message → image_key
+     *   2. Reply / create with msg_type=image, content={image_key: ...}
+     *
+     * Returns null on success or a short error description.
+     */
+    suspend fun replyImage(
+        chatId: String,
+        imageBytes: ByteArray,
+        messageId: String? = null,
+    ): String? = withContext(Dispatchers.IO) {
+        val client = restClient ?: return@withContext "Feishu 客户端未启动"
+        if (imageBytes.isEmpty()) return@withContext "图片为空"
+        // The oapi SDK insists on a File for image upload. Stage the bytes
+        // in cacheDir under a unique name; clean up regardless of outcome.
+        val cacheDir = com.clawgui.ng.runtime.RuntimeContainer.appContext.cacheDir
+        val tmp = java.io.File(cacheDir, "feishu_upload_${System.currentTimeMillis()}_${imageBytes.size}.jpg")
+        try {
+            tmp.writeBytes(imageBytes)
+            // — Step 1: upload bytes.
+            val uploadResp = withTimeoutOrNull(SEND_TIMEOUT_MS) {
+                client.im().image().create(
+                    CreateImageReq.newBuilder()
+                        .createImageReqBody(
+                            CreateImageReqBody.newBuilder()
+                                .imageType("message")
+                                .image(tmp)
+                                .build()
+                        )
+                        .build()
+                )
+            }
+            if (uploadResp == null) return@withContext "图片上传超时(${SEND_TIMEOUT_MS}ms)"
+            if (!uploadResp.success()) return@withContext "图片上传失败:${uploadResp.error}"
+            val imageKey = uploadResp.data?.imageKey
+                ?: return@withContext "图片上传后未返回 image_key"
+
+            // — Step 2: send as an image message.
+            val content = buildJsonObject { put("image_key", imageKey) }.toString()
+            val sendResp = withTimeoutOrNull(SEND_TIMEOUT_MS) {
+                if (!messageId.isNullOrBlank()) {
+                    client.im().message().reply(
+                        ReplyMessageReq.newBuilder()
+                            .messageId(messageId)
+                            .replyMessageReqBody(
+                                ReplyMessageReqBody.newBuilder()
+                                    .content(content).msgType("image").build()
+                            )
+                            .build()
+                    )
+                } else {
+                    client.im().message().create(
+                        CreateMessageReq.newBuilder()
+                            .receiveIdType("chat_id")
+                            .createMessageReqBody(
+                                CreateMessageReqBody.newBuilder()
+                                    .receiveId(chatId)
+                                    .content(content).msgType("image").build()
+                            )
+                            .build()
+                    )
+                }
+            }
+            when {
+                sendResp == null -> "图片消息超时"
+                !sendResp.success() -> "图片消息发送失败:${sendResp.error}"
+                else -> null
+            }
+        } catch (e: Throwable) {
+            "replyImage 异常:${e.message ?: e::class.simpleName}"
+        } finally {
+            runCatching { tmp.delete() }
+        }
+    }
 
     private fun isAllowed(senderOpenId: String): Boolean {
         val cfg = config ?: return false

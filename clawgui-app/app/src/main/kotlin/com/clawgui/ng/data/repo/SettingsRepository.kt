@@ -144,6 +144,16 @@ class SettingsRepository(private val store: SettingsStore) {
         store.overlayAlphaPct = clamped
     }
 
+    private val _feishuReplyImageMode = MutableStateFlow(
+        runCatching { FeishuReplyImageMode.valueOf(store.feishuReplyImageMode) }
+            .getOrDefault(FeishuReplyImageMode.FINAL_ONLY)
+    )
+    val feishuReplyImageMode: StateFlow<FeishuReplyImageMode> = _feishuReplyImageMode
+    fun setFeishuReplyImageMode(v: FeishuReplyImageMode) {
+        _feishuReplyImageMode.value = v
+        store.feishuReplyImageMode = v.name
+    }
+
     fun setActiveBrain(id: String) {
         _activeBrain.value = id
         store.activeBrain = id
@@ -292,3 +302,15 @@ data class ProviderCredentials(
             return vision.any { m.contains(it) }
         }
 }
+
+/**
+ * What gets shipped back to the Feishu chat when a PhoneAgent task ends.
+ * Text reply is always sent regardless of this setting.
+ *
+ *  - OFF        — text only, no images.
+ *  - FINAL_ONLY — one screenshot of the final state.
+ *  - COMPOSITE  — vertically stitched long image of every step's
+ *                 screenshot (requires trace recording to be enabled;
+ *                 falls back to FINAL_ONLY when trace data is missing).
+ */
+enum class FeishuReplyImageMode { OFF, FINAL_ONLY, COMPOSITE }

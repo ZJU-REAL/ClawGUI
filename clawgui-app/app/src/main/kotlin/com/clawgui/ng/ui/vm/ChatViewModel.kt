@@ -811,6 +811,34 @@ class ChatViewModel(
             runCatching {
                 RuntimeContainer.feishu.reply(chatId, finalMessage!!, lastMsgId)
             }
+            // Optional image reply. The text is always sent above; this
+            // attaches a screenshot (final state) or a composite long
+            // image of every step's screenshot depending on the user's
+            // setting. COMPOSITE silently downgrades to FINAL_ONLY if
+            // traces weren't recorded for this run.
+            runCatching {
+                val mode = RuntimeContainer.settings.feishuReplyImageMode.value
+                if (mode != com.clawgui.ng.data.repo.FeishuReplyImageMode.OFF) {
+                    val runDir = recorder?.runDir
+                    val labels = trace.map { rec ->
+                        rec.actionName + if (rec.actionExtra.isNotBlank()) " · ${rec.actionExtra.take(24)}" else ""
+                    }
+                    val bytes = withContext(Dispatchers.IO) {
+                        when (mode) {
+                            com.clawgui.ng.data.repo.FeishuReplyImageMode.COMPOSITE ->
+                                com.clawgui.ng.runtime.feishu.ReplyImageBuilder.compositeLong(runDir, labels)
+                                    ?: com.clawgui.ng.runtime.feishu.ReplyImageBuilder.finalShot(runDir)
+                            com.clawgui.ng.data.repo.FeishuReplyImageMode.FINAL_ONLY ->
+                                com.clawgui.ng.runtime.feishu.ReplyImageBuilder.finalShot(runDir)
+                            else -> null
+                        }
+                    }
+                    if (bytes != null) {
+                        val err = RuntimeContainer.feishu.replyImage(chatId, bytes, lastMsgId)
+                        if (err != null) android.util.Log.w("ChatVM", "feishu replyImage failed: $err")
+                    }
+                }
+            }
         }
         // (Bring-to-front happens unconditionally inside the finally above
         // so we don't miss the cancellation / error paths.)

@@ -173,4 +173,11 @@ class SettingsStore(context: Context) {
     var overlayAlphaPct: Int
         get() = plain.getInt("overlay_alpha_pct", 85)
         set(v) { plain.edit().putInt("overlay_alpha_pct", v.coerceIn(40, 100)).apply() }
+
+    // ── Feishu reply-image (post a screenshot back to the Feishu chat) ──
+
+    /** Stored as the enum name (OFF / FINAL_ONLY / COMPOSITE). Default = FINAL_ONLY. */
+    var feishuReplyImageMode: String
+        get() = plain.getString("feishu_reply_image_mode", "FINAL_ONLY") ?: "FINAL_ONLY"
+        set(v) { plain.edit().putString("feishu_reply_image_mode", v).apply() }
 }

@@ -581,6 +581,24 @@ private fun ChannelsPage() {
             onCheckedChange = RuntimeContainer.settings::setFeishuAutoReply,
         )
 
+        SectionLabel("PhoneAgent 完成后回图")
+        val replyImageMode by RuntimeContainer.settings.feishuReplyImageMode.collectAsStateWithLifecycle()
+        com.clawgui.ng.data.repo.FeishuReplyImageMode.values().forEach { mode ->
+            val (label, sub) = when (mode) {
+                com.clawgui.ng.data.repo.FeishuReplyImageMode.OFF ->
+                    "关闭" to "只发文字结果,不附图"
+                com.clawgui.ng.data.repo.FeishuReplyImageMode.FINAL_ONLY ->
+                    "最终截屏" to "任务结束附 1 张最终状态截屏(推荐)"
+                com.clawgui.ng.data.repo.FeishuReplyImageMode.COMPOSITE ->
+                    "全过程长图" to "拼接每一步截屏成一张长图(需要开启「记录运行轨迹」)"
+            }
+            SettingsChoiceRow(
+                label = "$label · $sub",
+                selected = mode == replyImageMode,
+                onClick = { RuntimeContainer.settings.setFeishuReplyImageMode(mode) },
+            )
+        }
+
         InfoCard(
             "接入步骤\n" +
                 "1. 在飞书开放平台创建「企业自建应用」\n" +
