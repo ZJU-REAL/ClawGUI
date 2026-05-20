@@ -112,17 +112,27 @@ object RuntimeContainer {
         scope.launch {
             feishuInbound.collect { ev ->
                 runCatching { maybeAutoTitleApp(ev.sessionKey, ev.text) }
-                // Two paths:
-                //   feishuRunAsGuiTask = true  → drive PhoneAgent end-to-end
-                //                                (the bot actually does the
-                //                                 task on the phone and ships
-                //                                 final screenshot back).
-                //   feishuAutoReply = true  → fall back to a plain Brain
-                //                              text reply (legacy behaviour).
-                // GUI takes precedence; if it fires we don't also Brain-reply.
-                val ranGui = settings.feishuRunAsGuiTask.value &&
-                    runCatching { runFeishuAsGuiTask(ev) }.getOrDefault(false)
-                if (!ranGui && settings.feishuAutoReply.value) {
+                // GUI path takes the message if it's enabled — even if
+                // the run fails, we still owned this message and showed
+                // an error to the user inside the session. Brain
+                // fallback only runs when GUI is disabled entirely.
+                val guiEnabled = settings.feishuRunAsGuiTask.value
+                if (guiEnabled) {
+                    runCatching { runFeishuAsGuiTask(ev) }
+                        .onFailure {
+                            android.util.Log.w("FeishuGui",
+                                "runFeishuAsGuiTask threw", it)
+                            // Surface the failure into the chat so the
+                            // user doesn't see "正在执行任务…" frozen.
+                            sessions.updateLastMessage(ev.sessionKey) { msg ->
+                                msg.copy(
+                                    content = "GUI 执行启动失败:${it.message ?: it::class.simpleName}",
+                                    streaming = false,
+                                    error = it.message ?: "unknown",
+                                )
+                            }
+                        }
+                } else if (settings.feishuAutoReply.value) {
                     runCatching { answerFeishuInboundApp(ev) }
                 }
             }
@@ -175,17 +185,18 @@ object RuntimeContainer {
      * Those are for the in-app chat experience. The bot just needs to
      * 1) run the task, 2) say what happened, 3) attach screenshot.
      */
-    private suspend fun runFeishuAsGuiTask(ev: FeishuInbound): Boolean {
+    private suspend fun runFeishuAsGuiTask(ev: FeishuInbound) {
         val chatId = ev.sessionKey.removePrefix("feishu:")
         val visionId = settings.activeVision.value
         val cred = settings.resolveCredentials(visionId)
         if (cred == null || cred.apiKey.isBlank()) {
+            val msg = "Vision 模型未配置 API Key。请打开 ClawGUI → 设置 → AI 模型 粘贴 Key 后再试。"
             android.util.Log.w("FeishuGui", "vision creds missing — skip GUI run")
-            return false
+            runCatching { feishu.reply(chatId, msg, ev.messageId) }
+            return
         }
 
-        // Authorisation gate: need Shizuku or wadb up. Skip silently when
-        // not ready — falling back to Brain auto-reply is still useful.
+        // Authorisation gate: need Shizuku or wadb up.
         val wadbReady = runCatching {
             val s = com.clawgui.ng.runtime.shizuku.wadb.WirelessAdb
                 .get(appContext).state.value
@@ -194,15 +205,10 @@ object RuntimeContainer {
         }.getOrDefault(false)
         val shizukuReady = runCatching { device.isAvailable() }.getOrDefault(false)
         if (!wadbReady && !shizukuReady) {
-            runCatching {
-                feishu.reply(
-                    chatId,
-                    "收到任务,但 ClawGUI 未授权设备控制(无线调试 / Shizuku 未连)。" +
-                        "请打开 ClawGUI → 设置 → 设备控制授权,完成任一方式后再试。",
-                    ev.messageId,
-                )
-            }
-            return true   // we *did* respond, just not by running the task
+            val msg = "收到任务,但 ClawGUI 未授权设备控制(无线调试 / Shizuku 未连)。" +
+                "请打开 ClawGUI → 设置 → 设备控制授权,完成任一方式后再试。"
+            runCatching { feishu.reply(chatId, msg, ev.messageId) }
+            return
         }
 
         // Promote the process so Android 14 doesn't throttle the LLM
@@ -254,21 +260,55 @@ object RuntimeContainer {
             }
         }
 
-        val finalText: String = try {
-            agent.run(ev.text)
+        // Run step-by-step so the chat bubble updates in real time and
+        // we can enforce a per-step timeout (5 min — anything longer is
+        // a hung LLM call, not actual progress).
+        var finalText: String? = null
+        var stepIdx = 0
+        try {
+            while (stepIdx < 60) {
+                stepIdx++
+                val step = try {
+                    kotlinx.coroutines.withTimeout(5 * 60 * 1000L) {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            if (stepIdx == 1) agent.step(ev.text) else agent.step()
+                        }
+                    }
+                } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
+                    finalText = "第 $stepIdx 步超过 5 分钟未完成,任务终止"
+                    break
+                }
+                val actionName = step.action["action"] as? String ?: "?"
+                sessions.updateLastMessage(ev.sessionKey) {
+                    it.copy(
+                        content = "正在执行第 $stepIdx 步:$actionName",
+                    )
+                }
+                if (step.finished) {
+                    finalText = step.message ?: step.action["message"] as? String ?: "任务结束"
+                    break
+                }
+            }
+            if (finalText == null) finalText = "已达到最大步数($stepIdx),任务终止"
         } catch (t: Throwable) {
-            "执行异常:${t.message ?: t::class.simpleName}"
+            finalText = "执行异常:${t.message ?: t::class.simpleName}"
         } finally {
-            recorder?.finalize(finalMessage = "", success = true)
+            recorder?.finalize(
+                finalMessage = finalText ?: "",
+                success = finalText != null && !finalText!!.startsWith("执行异常") &&
+                    !finalText!!.contains("步数,任务终止") &&
+                    !finalText!!.contains("步超过 5 分钟"),
+            )
             agent.cleanup()
         }
+        val finalTextSafe = finalText ?: "任务结束"
 
         sessions.updateLastMessage(ev.sessionKey) {
-            it.copy(content = finalText, streaming = false)
+            it.copy(content = finalTextSafe, streaming = false)
         }
 
         // Text reply.
-        runCatching { feishu.reply(chatId, finalText, ev.messageId) }
+        runCatching { feishu.reply(chatId, finalTextSafe, ev.messageId) }
 
         // Image reply (mode + fallback identical to ChatViewModel path).
         runCatching {
@@ -315,7 +355,6 @@ object RuntimeContainer {
                 }
             }
         }
-        return true
     }
 
     private suspend fun answerFeishuInboundApp(ev: FeishuInbound) {

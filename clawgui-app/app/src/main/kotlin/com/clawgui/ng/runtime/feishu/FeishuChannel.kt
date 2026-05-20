@@ -381,7 +381,13 @@ class FeishuChannel(
             val obj = JSONObject(rawContent)
             when (type) {
                 "text" -> obj.optString("text").trim()
-                    .removePrefix("@_user_1 ").trim()     // strip leading @mention token
+                    // Strip any "@_user_N" / "@_chat_N" mention tokens — Feishu
+                    // wraps every @-mention as e.g. "@_user_1 你好" and the
+                    // user id varies per chat. Without this strip, a task
+                    // like "@bot 发朋友圈" reaches PhoneAgent as
+                    // "@_user_1 发朋友圈", which the model interprets oddly.
+                    .replace(Regex("""@_(user|chat)_\d+\s*"""), "")
+                    .trim()
                 "post" -> {
                     // post = list of paragraphs, each a list of {tag, text}
                     val title = obj.optString("title")
