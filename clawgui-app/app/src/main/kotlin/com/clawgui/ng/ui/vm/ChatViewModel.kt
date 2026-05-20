@@ -816,15 +816,17 @@ class ChatViewModel(
             // image of every step's screenshot depending on the user's
             // setting. COMPOSITE silently downgrades to FINAL_ONLY if
             // traces weren't recorded for this run.
-            runCatching {
-                val mode = RuntimeContainer.settings.feishuReplyImageMode.value
-                if (mode != com.clawgui.ng.data.repo.FeishuReplyImageMode.OFF) {
+            val mode = runCatching { RuntimeContainer.settings.feishuReplyImageMode.value }
+                .getOrDefault(com.clawgui.ng.data.repo.FeishuReplyImageMode.FINAL_ONLY)
+            android.util.Log.i("ChatVM", "feishu image reply: mode=$mode runDir=${recorder?.runDir}")
+            if (mode != com.clawgui.ng.data.repo.FeishuReplyImageMode.OFF) {
+                try {
                     val runDir = recorder?.runDir
                     val labels = trace.map { rec ->
                         rec.actionName + if (rec.actionExtra.isNotBlank()) " · ${rec.actionExtra.take(24)}" else ""
                     }
                     val bytes = withContext(Dispatchers.IO) {
-                        when (mode) {
+                        val direct = when (mode) {
                             com.clawgui.ng.data.repo.FeishuReplyImageMode.COMPOSITE ->
                                 com.clawgui.ng.runtime.feishu.ReplyImageBuilder.compositeLong(runDir, labels)
                                     ?: com.clawgui.ng.runtime.feishu.ReplyImageBuilder.finalShot(runDir)
@@ -832,11 +834,45 @@ class ChatViewModel(
                                 com.clawgui.ng.runtime.feishu.ReplyImageBuilder.finalShot(runDir)
                             else -> null
                         }
+                        // If trace-based path didn't yield bytes (e.g. user
+                        // had trace recording off), grab a live screenshot
+                        // right now so the user still gets *something*.
+                        direct ?: run {
+                            android.util.Log.i("ChatVM",
+                                "trace produced no bytes — falling back to live device.screenshot()")
+                            val raw = runCatching { device.screenshot() }.getOrNull()
+                            raw?.let {
+                                com.clawgui.ng.runtime.phone.util.ScreenshotCompressor.compress(
+                                    it,
+                                    com.clawgui.ng.runtime.phone.util.ScreenshotCompressor.Quality.MEDIUM,
+                                )
+                            }
+                        }
                     }
-                    if (bytes != null) {
+                    android.util.Log.i("ChatVM", "feishu image bytes=${bytes?.size ?: 0}")
+                    if (bytes != null && bytes.isNotEmpty()) {
                         val err = RuntimeContainer.feishu.replyImage(chatId, bytes, lastMsgId)
-                        if (err != null) android.util.Log.w("ChatVM", "feishu replyImage failed: $err")
+                        if (err != null) {
+                            android.util.Log.w("ChatVM", "feishu replyImage failed: $err")
+                            // Surface the failure both in the chat bubble's
+                            // error slot and on the Feishu debug-log surface
+                            // so the user can see it without logcat.
+                            sessions.updateLastMessage(key) {
+                                it.copy(error = "飞书回图失败:$err")
+                            }
+                            runCatching { RuntimeContainer.feishu.appendDebug("replyImage 失败: $err") }
+                        } else {
+                            android.util.Log.i("ChatVM", "feishu replyImage OK (${bytes.size} bytes)")
+                        }
+                    } else {
+                        android.util.Log.w("ChatVM",
+                            "feishu image reply skipped: no bytes available (runDir=$runDir)")
+                        sessions.updateLastMessage(key) {
+                            it.copy(error = "飞书回图未发出:本机没生成图片(检查「记录运行轨迹」是否开启)")
+                        }
                     }
+                } catch (t: Throwable) {
+                    android.util.Log.w("ChatVM", "feishu image reply threw", t)
                 }
             }
         }

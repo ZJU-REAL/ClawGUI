@@ -82,6 +82,11 @@ class FeishuChannel(
         _log.value = (_log.value + entry).takeLast(60)
     }
 
+    /** External entry to the debug log surface (e.g. ChatViewModel posts
+     *  replyImage failures here so the user can see them in Settings →
+     *  外部通道 → 调试日志 without needing logcat). */
+    fun appendDebug(line: String) = dlog(line)
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     @Volatile private var restClient: Client? = null
     @Volatile private var wsClient: WsClient? = null
@@ -230,7 +235,10 @@ class FeishuChannel(
                 )
             }
             if (uploadResp == null) return@withContext "图片上传超时(${SEND_TIMEOUT_MS}ms)"
-            if (!uploadResp.success()) return@withContext "图片上传失败:${uploadResp.error}"
+            if (!uploadResp.success()) {
+                val em = uploadResp.error?.message ?: uploadResp.msg ?: "?"
+                return@withContext "图片上传失败 code=${uploadResp.code}: $em"
+            }
             val imageKey = uploadResp.data?.imageKey
                 ?: return@withContext "图片上传后未返回 image_key"
 
@@ -262,7 +270,10 @@ class FeishuChannel(
             }
             when {
                 sendResp == null -> "图片消息超时"
-                !sendResp.success() -> "图片消息发送失败:${sendResp.error}"
+                !sendResp.success() -> {
+                    val em = sendResp.error?.message ?: sendResp.msg ?: "?"
+                    "图片消息发送失败 code=${sendResp.code}: $em"
+                }
                 else -> null
             }
         } catch (e: Throwable) {
