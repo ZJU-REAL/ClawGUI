@@ -104,7 +104,7 @@ ClawGUI-RL supports two training modes: **virtual environment scaling** (via Doc
 
 ### 1. Virtual Environment Scaling
 
-#### Step 1 — Clone OpenGUI-Server
+#### Step 1 — Clone ClawGUI-Server
 
 ```bash
 git clone https://github.com/sugarandgugu/ClawGUI-Server
@@ -115,8 +115,10 @@ git clone https://github.com/sugarandgugu/ClawGUI-Server
 Follow the installation guide in the ClawGUI-Server repository. Key steps include:
 
 1. **Verify KVM support** — Ensure your machine supports KVM virtualization (`kvm-ok` or check `/dev/kvm`).
-2. **Pull the Docker image** — Pull the MobileWorld Android emulator image as described in the OpenGUI-Server docs.
+2. **Pull the Docker image** — Pull the MobileWorld Android emulator image as described in the ClawGUI-Server docs.
 3. **Launch Docker containers** — Start one or more containers. Each running container exposes a backend URL (e.g., `http://127.0.0.1:PORT`).
+
+> **Tip:** To run containers against the latest upstream [MobileWorld](https://github.com/Tongyi-MAI/MobileWorld) source without rebuilding the Docker image, pass `--mount-src-path /path/to/MobileWorld/src` to `mw env run`. See the ClawGUI-Server README for details.
 
 After this step, each container provides an API backend URL that ClawGUI-RL will use to interact with the emulated phone.
 
@@ -220,9 +222,9 @@ Real-device training is a notoriously challenging problem in the industry. It in
 
 #### Step 1 — Prepare your Android device
 
-If you have already cloned OpenGUI-Server, connect a physical Android phone to your computer via USB.
+If you have already cloned ClawGUI-Server, connect a physical Android phone to your computer via USB.
 
-> **Running on a remote server?** If your training runs on a remote server but you want to connect a local phone via USB, you can set up port forwarding between your local machine and the server. For detailed steps, refer to the real-device training section in the OpenGUI-Server documentation.
+> **Running on a remote server?** If your training runs on a remote server but you want to connect a local phone via USB, you can set up port forwarding between your local machine and the server. For detailed steps, refer to the real-device training section in the ClawGUI-Server documentation.
 
 #### Step 2 — Enable developer mode & USB debugging
 
@@ -247,7 +249,7 @@ uv run mobile-world server
 
 #### Step 5 — Test device connectivity
 
-Use the OpenGUI-Server test script to verify that your device is recognized:
+Use the ClawGUI-Server test script to verify that your device is recognized:
 
 ```bash
 python test_true_device.py
@@ -257,7 +259,7 @@ Make sure the correct `device_id` is set (check with `adb devices`).
 
 #### Step 6 — Register device backend URL
 
-Fill the OpenGUI-Server API backend URL into:
+Fill the ClawGUI-Server API backend URL into:
 
 ```
 examples/env_server/realdevice_server.txt

@@ -117,6 +117,8 @@ git clone https://github.com/sugarandgugu/ClawGUI-Server
 2. **拉取 Docker 镜像** — 按照文档拉取 MobileWorld Android 模拟器镜像。
 3. **启动 Docker 容器** — 启动一个或多个容器，每个容器会提供一个后端 API URL（如 `http://127.0.0.1:PORT`）。
 
+> **提示**：如需让容器使用上游 [MobileWorld](https://github.com/Tongyi-MAI/MobileWorld) 最新源码（无需重新构建镜像），可在启动容器时加 `--mount-src-path /path/to/MobileWorld/src`，详见 ClawGUI-Server README。
+
 #### 第 3 步 — 注册环境 URL
 
 将容器后端 URL 逐行填入：
