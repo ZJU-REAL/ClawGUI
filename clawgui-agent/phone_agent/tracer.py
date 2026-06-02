@@ -60,6 +60,11 @@ class GUITracer:
 
         return self._episode_id
 
+    @property
+    def episode_dir(self) -> Path | None:
+        """Current episode directory, if tracing has started."""
+        return self._episode_dir
+
     def record_step(
         self,
         step: int,

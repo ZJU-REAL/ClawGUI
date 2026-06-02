@@ -49,6 +49,7 @@
   - [ClawGUI-RL — Build](#-clawgui-rl--build)
   - [ClawGUI-Eval — Evaluate](#-clawgui-eval--evaluate)
   - [ClawGUI-Agent — Deploy](#-clawgui-agent--deploy)
+  - [ClawGUI-Skills — Self-Evolving Skills](#-clawgui-skills--self-evolving-skills)
   - [ClawGUI-APP — On-Device Deploy](#-clawgui-app--on-device-deploy)
 - [Roadmap](#️-roadmap)
 - [Acknowledgements](#-acknowledgements)
@@ -66,6 +67,7 @@ Building a capable GUI agent involves three tightly coupled problems that are ra
 | 🚀 **[ClawGUI-RL](clawgui-rl/)** | **Build** — Train GUI agents online with scalable RL: parallel Docker environments, real Android devices, and GiGPO+PRM for fine-grained step-level rewards |
 | 📊 **[ClawGUI-Eval](clawgui-eval/)** | **Evaluate** — Measure what the agent has learned: 6 benchmarks, 11+ models, 95.8% faithful reproduction of official results |
 | 🤖 **[ClawGUI-Agent](clawgui-agent/)** | **Deploy** — Use GUI agents in the real world: control mobile devices via natural language through 12+ chat platforms, with one-command evaluation built in |
+| 🧩 **[ClawGUI-Skills](clawgui-skills/)** | **Self-evolving skills** — Training-free skill evolution proposed and validated in our paper: structured packages, retrieval, failure diagnosis, restricted revision, and reuse |
 | 📱 **[ClawGUI-APP](clawgui-app/)** | **On-Device Deploy** — Run the full brain + GUI agent stack directly on one Android phone, no desktop coordinator needed, powered by Shizuku |
 | 🏆 **ClawGUI-2B** | End-to-end validation: trained entirely with ClawGUI-RL and GiGPO, achieving **17.1** MobileWorld SR vs. the **11.1** baseline |
 
@@ -143,6 +145,20 @@ ClawGUI-Agent closes the loop from training to production. Built on OpenClaw and
 </div>
 
 → **[Get started with ClawGUI-Agent](clawgui-agent/README.md)**
+
+
+### 🧩 ClawGUI-Skills — Self-Evolving Skills
+
+> 📁 [`clawgui-skills/`](clawgui-skills/) · 📖 [Full Documentation](clawgui-skills/README.md) · [中文](clawgui-skills/README_zh.md)
+
+ClawGUI-Skills implements the training-free self-evolving GUI skill architecture proposed and validated in our paper **“Reflect, Revise, Reuse: Training-Free Skill Evolution for GUI Agents.”** It stores procedural task knowledge as structured skill packages and lets PhoneAgent retrieve, inject, diagnose, and revise them on demand.
+
+- **Four modes** — `off`, `trace`, `reuse`, and `evolve`; disabled by default to avoid extra context cost
+- **Structured packages** — `meta_info.json`, `plan.md`, `backup.md`, `recover.md`, and `failure_examples/`
+- **Instant revision** — failed runs are diagnosed by an isolated verifier and mapped to targeted skill-file edits
+- **Visual inspection** — the Web UI shows matched skill name, `skill_id`, injected context, revisions, and failure examples
+
+→ **[Get started with ClawGUI-Skills](clawgui-skills/README.md)**
 
 
 ### 📱 ClawGUI-APP — On-Device Deploy

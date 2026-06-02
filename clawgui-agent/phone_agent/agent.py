@@ -32,10 +32,23 @@ class AgentConfig:
     # Trace configuration
     trace_enabled: bool = False
     trace_dir: str = "gui_trace"
+    # Self-evolving skill configuration
+    skill_mode: str = "off"  # off / trace / reuse / evolve
+    skills_dir: str = "skill_store"
+    skill_retrieval_threshold: float = 0.35
+    skill_max_context_chars: int = 6000
+    skill_max_iterations: int = 2
+    skill_require_review: bool = False
+    skill_generator_mode: str = "auto"
+    skill_verifier_mode: str = "auto"
+    skill_revision_mode: str = "auto"
 
     def __post_init__(self):
         if self.system_prompt is None:
             self.system_prompt = get_system_prompt(self.lang)
+        self.skill_mode = (self.skill_mode or "off").lower()
+        if self.skill_mode in ("trace", "evolve"):
+            self.trace_enabled = True
 
 
 @dataclass
@@ -156,6 +169,36 @@ class PhoneAgent:
                 if self.agent_config.verbose:
                     print(f"⚠️ 记忆系统初始化失败: {e}")
 
+        # Initialize optional self-evolving skill runtime
+        self.skill_runtime = None
+        self._skill_context = ""
+        self._skill_prepared = False
+        if self.agent_config.skill_mode != "off":
+            try:
+                from phone_agent.skills_runtime import PhoneAgentSkillRuntime
+                self.skill_runtime = PhoneAgentSkillRuntime(
+                    mode=self.agent_config.skill_mode,
+                    store_dir=self.agent_config.skills_dir,
+                    retrieval_threshold=self.agent_config.skill_retrieval_threshold,
+                    max_context_chars=self.agent_config.skill_max_context_chars,
+                    max_iterations=self.agent_config.skill_max_iterations,
+                    require_review=self.agent_config.skill_require_review,
+                    platform="Android",
+                    model_base_url=self.model_config.base_url,
+                    model_api_key=self.model_config.api_key,
+                    model_name=self.model_config.model_name,
+                    generator_mode=self.agent_config.skill_generator_mode,
+                    verifier_mode=self.agent_config.skill_verifier_mode,
+                    revision_mode=self.agent_config.skill_revision_mode,
+                    model_temperature=self.model_config.temperature,
+                    model_max_tokens=self.model_config.max_tokens,
+                )
+                if self.agent_config.verbose:
+                    print(f"🧩 自进化技能模式已启用: {self.agent_config.skill_mode}")
+            except Exception as e:
+                if self.agent_config.verbose:
+                    print(f"⚠️ 自进化技能系统初始化失败: {e}")
+
     def _resolve_model_type(self) -> ModelType:
         """Resolve model type from config or auto-detect from model name."""
         model_type_str = self.agent_config.model_type.lower()
@@ -184,64 +227,72 @@ class PhoneAgent:
         Returns:
             Final message from the agent.
         """
-        self._context = []
-        self._step_count = 0
-        self._current_task = task
+        max_attempts = (
+            self.agent_config.skill_max_iterations
+            if self.skill_runtime and self.agent_config.skill_mode == "evolve"
+            else 1
+        )
+        final_message = "Task completed"
 
-        # Clear action history for QwenVL handler/adapter
-        if self._specialized_handler is not None and hasattr(self._specialized_handler, 'clear_history'):
-            self._specialized_handler.clear_history()
-        if hasattr(self._adapter, 'clear_history'):
-            self._adapter.clear_history()
+        for attempt in range(1, max_attempts + 1):
+            if attempt > 1 and self.agent_config.verbose:
+                print(f"🧩 技能已修订，开始第 {attempt}/{max_attempts} 次即时重试")
 
-        # Start tracing
-        if self.tracer:
-            self.tracer.start_task(task, model=self.model_config.model_name)
+            self._context = []
+            self._step_count = 0
+            self._current_task = task
 
-        # Start memory tracking
-        if self.memory_manager:
-            self.memory_manager.start_task(task)
+            # Clear action history for QwenVL handler/adapter
+            if self._specialized_handler is not None and hasattr(self._specialized_handler, 'clear_history'):
+                self._specialized_handler.clear_history()
+            if hasattr(self._adapter, 'clear_history'):
+                self._adapter.clear_history()
 
-        # First step with user prompt
-        result = self._execute_step(task, is_first=True)
+            self._skill_context = ""
+            self._skill_prepared = False
 
-        if result.finished:
-            if self.memory_manager:
-                self.memory_manager.end_task(
-                    success=result.success,
-                    result=result.message or "Task completed"
-                )
+            # Start tracing
             if self.tracer:
-                self.tracer.end_task(
-                    result=result.message or "Task completed",
-                    total_steps=self._step_count,
-                )
-            return result.message or "Task completed"
+                self.tracer.start_task(task, model=self.model_config.model_name)
 
-        # Continue until finished or max steps reached
-        while self._step_count < self.agent_config.max_steps:
-            result = self._execute_step(is_first=False)
+            # Start memory tracking
+            if self.memory_manager:
+                self.memory_manager.start_task(task)
+
+            # First step with user prompt
+            result = self._execute_step(task, is_first=True)
 
             if result.finished:
-                if self.memory_manager:
-                    self.memory_manager.end_task(
-                        success=result.success,
-                        result=result.message or "Task completed"
-                    )
-                if self.tracer:
-                    self.tracer.end_task(
-                        result=result.message or "Task completed",
-                        total_steps=self._step_count,
-                    )
-                return result.message or "Task completed"
+                final_message = result.message or "Task completed"
+                finish_result = self._finish_task_tracking(result.success, final_message)
+                if result.success or not self._should_retry_after_skill_revision(
+                    finish_result, attempt, max_attempts
+                ):
+                    return final_message
+                continue
 
-        # Task timeout
-        if self.memory_manager:
-            self.memory_manager.end_task(success=False, result="Max steps reached")
-        if self.tracer:
-            self.tracer.end_task(result="Max steps reached", total_steps=self._step_count)
+            # Continue until finished or max steps reached
+            while self._step_count < self.agent_config.max_steps:
+                result = self._execute_step(is_first=False)
 
-        return "Max steps reached"
+                if result.finished:
+                    final_message = result.message or "Task completed"
+                    finish_result = self._finish_task_tracking(result.success, final_message)
+                    if result.success or not self._should_retry_after_skill_revision(
+                        finish_result, attempt, max_attempts
+                    ):
+                        return final_message
+                    break
+            else:
+                # Task timeout
+                final_message = "Max steps reached"
+                finish_result = self._finish_task_tracking(False, final_message)
+                if not self._should_retry_after_skill_revision(
+                    finish_result, attempt, max_attempts
+                ):
+                    return final_message
+
+        return final_message
 
     def step(self, task: str | None = None) -> StepResult:
         """
@@ -267,6 +318,42 @@ class PhoneAgent:
         self._context = []
         self._step_count = 0
 
+    def _finish_task_tracking(self, success: bool, result: str):
+        """Close memory, trace, and optional skill runtime for a task."""
+        if self.memory_manager:
+            self.memory_manager.end_task(success=success, result=result)
+        trace_path = None
+        if self.tracer:
+            self.tracer.end_task(result=result, total_steps=self._step_count)
+            trace_path = getattr(self.tracer, "episode_dir", None)
+        if self.skill_runtime:
+            try:
+                finish_result = self.skill_runtime.finish(
+                    task=self._current_task,
+                    success=success,
+                    result=result,
+                    trace_path=trace_path,
+                )
+                if self.agent_config.verbose and finish_result.summary:
+                    print(f"🧩 技能更新: {finish_result.summary}")
+                    if finish_result.edits:
+                        print(f"🧩 技能修订文件: {json.dumps(finish_result.edits, ensure_ascii=False)}")
+                return finish_result
+            except Exception as e:
+                if self.agent_config.verbose:
+                    print(f"⚠️ 技能运行收尾失败: {e}")
+        return None
+
+    def _should_retry_after_skill_revision(self, finish_result, attempt: int, max_attempts: int) -> bool:
+        """Retry only when evolve mode produced concrete skill edits."""
+        return (
+            self.agent_config.skill_mode == "evolve"
+            and not self.agent_config.skill_require_review
+            and attempt < max_attempts
+            and finish_result is not None
+            and bool(getattr(finish_result, "edits", None))
+        )
+
     def _execute_step(
         self, user_prompt: str | None = None, is_first: bool = False
     ) -> StepResult:
@@ -277,6 +364,39 @@ class PhoneAgent:
         device_factory = get_device_factory()
         screenshot = device_factory.get_screenshot(self.agent_config.device_id)
         current_app = device_factory.get_current_app(self.agent_config.device_id)
+
+        screenshot_blocker = _screenshot_blocker_message(screenshot)
+        if screenshot_blocker:
+            return StepResult(
+                success=False,
+                finished=True,
+                action=finish(message=screenshot_blocker),
+                thinking="",
+                message=screenshot_blocker,
+            )
+
+        if is_first and user_prompt and self.skill_runtime and not self._skill_prepared:
+            try:
+                prepare_result = self.skill_runtime.prepare(
+                    task=user_prompt,
+                    current_app=current_app,
+                    screenshot=screenshot,
+                    platform="Android",
+                )
+                self._skill_prepared = True
+                self._skill_context = prepare_result.context
+                if self.agent_config.verbose:
+                    print(f"🧩 技能检索: {prepare_result.summary or prepare_result.status}")
+                    if prepare_result.has_skill:
+                        print(
+                            "🧩 使用技能: "
+                            f"{prepare_result.display_name} "
+                            f"({prepare_result.skill_id}, score={prepare_result.retrieval_score:.2f})"
+                        )
+            except Exception as e:
+                self._skill_prepared = True
+                if self.agent_config.verbose:
+                    print(f"⚠️ 技能准备失败: {e}")
 
         # Build messages using the adapter
         is_non_autoglm = self._model_type in (
@@ -295,6 +415,10 @@ class PhoneAgent:
                 screen_width=screenshot.width,
                 screen_height=screenshot.height,
             )
+
+            if is_first and self._skill_context:
+                from phone_agent.skills_runtime import append_text_to_messages
+                append_text_to_messages(self._context, self._skill_context)
             
             # Limit context based on model type
             if self._model_type == ModelType.QWENVL:
@@ -322,6 +446,8 @@ class PhoneAgent:
                     system_prompt = build_personalized_prompt(
                         system_prompt, self.memory_manager, user_prompt
                     )
+                if self._skill_context:
+                    system_prompt = system_prompt + f"\n\n{self._skill_context}"
                 
                 self._context.append(
                     MessageBuilder.create_system_message(system_prompt)
@@ -474,7 +600,20 @@ class PhoneAgent:
             except ValueError:
                 if self.agent_config.verbose:
                     traceback.print_exc()
-                action = finish(message=action_str)
+                if self.agent_config.skill_mode == "off":
+                    action = finish(message=action_str)
+                else:
+                    message = (
+                        "Model did not output a valid AutoGLM action. Expected "
+                        'do(action="...", ...) or finish(message="...").'
+                    )
+                    return StepResult(
+                        success=False,
+                        finished=True,
+                        action=None,
+                        thinking=thinking,
+                        message=f"{message} Raw output: {action_str[:500]}",
+                    )
 
             if self.agent_config.verbose:
                 print("-" * 50)
@@ -661,3 +800,25 @@ class PhoneAgent:
         """Import memories from backup."""
         if self.memory_manager:
             self.memory_manager.import_memories(memories)
+
+
+def _screenshot_blocker_message(screenshot: Any) -> str:
+    """Explain screenshot failures before the model sees a black fallback image."""
+    if screenshot is None:
+        return "Screenshot failed: no screenshot object was returned; check the device connection."
+
+    error_message = str(getattr(screenshot, "error_message", "") or "").strip()
+    is_sensitive = bool(getattr(screenshot, "is_sensitive", False))
+    if is_sensitive:
+        detail = f" Underlying message: {error_message}" if error_message else ""
+        return (
+            "Screenshot is blocked by the current screen. Please manually finish login, "
+            "verification, unlock, or other user-only steps, then rerun the task."
+            f"{detail}"
+        )
+    if error_message:
+        return (
+            "Screenshot failed because of a device connection or capture error, not a model decision. "
+            f"Underlying message: {error_message}"
+        )
+    return ""

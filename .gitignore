@@ -84,6 +84,12 @@ OpenGUI-Server
 # Phone agent runtime data
 clawgui-agent/memory_db/
 clawgui-agent/demo_memory_db/
+clawgui-agent/.runtime/
+clawgui-agent/skill_store/
+clawgui-agent/skill_store_quarantine/
+clawgui-agent/gui_trace/
+skill_store/
+demo_skill_store/
 
 .claude
 CLAUDE.md

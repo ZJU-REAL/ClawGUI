@@ -47,6 +47,16 @@ class GUITool(Tool):
         # Trace
         trace_enabled: bool = False,
         trace_dir: str = "gui_trace",
+        # Self-evolving skills
+        skill_mode: str = "off",
+        skills_dir: str = "skill_store",
+        skill_retrieval_threshold: float = 0.35,
+        skill_max_context_chars: int = 6000,
+        skill_max_iterations: int = 2,
+        skill_require_review: bool = False,
+        skill_generator_mode: str = "auto",
+        skill_verifier_mode: str = "auto",
+        skill_revision_mode: str = "auto",
     ):
         self.device_type = device_type
         self.device_id = device_id
@@ -64,6 +74,15 @@ class GUITool(Tool):
         self.prompt_template_style = prompt_template_style
         self.trace_enabled = trace_enabled
         self.trace_dir = trace_dir
+        self.skill_mode = skill_mode
+        self.skills_dir = skills_dir
+        self.skill_retrieval_threshold = skill_retrieval_threshold
+        self.skill_max_context_chars = skill_max_context_chars
+        self.skill_max_iterations = skill_max_iterations
+        self.skill_require_review = skill_require_review
+        self.skill_generator_mode = skill_generator_mode
+        self.skill_verifier_mode = skill_verifier_mode
+        self.skill_revision_mode = skill_revision_mode
 
     @property
     def name(self) -> str:
@@ -247,6 +266,15 @@ class GUITool(Tool):
             model_type=self.prompt_template_style,
             trace_enabled=self.trace_enabled,
             trace_dir=self.trace_dir,
+            skill_mode=self.skill_mode,
+            skills_dir=self.skills_dir,
+            skill_retrieval_threshold=self.skill_retrieval_threshold,
+            skill_max_context_chars=self.skill_max_context_chars,
+            skill_max_iterations=self.skill_max_iterations,
+            skill_require_review=self.skill_require_review,
+            skill_generator_mode=self.skill_generator_mode,
+            skill_verifier_mode=self.skill_verifier_mode,
+            skill_revision_mode=self.skill_revision_mode,
         )
 
         # Auto-confirm for nanobot context (no interactive stdin)
@@ -264,7 +292,26 @@ class GUITool(Tool):
             takeover_callback=auto_takeover,
         )
 
-        return agent.run(task)
+        result = agent.run(task)
+        skill_runtime = getattr(agent, "skill_runtime", None)
+        if skill_runtime and getattr(skill_runtime, "prepare_result", None):
+            prepare = skill_runtime.prepare_result
+            lines = [
+                result,
+                "",
+                f"[ClawGUI-Skills] mode={self.skill_mode}, status={prepare.status}",
+            ]
+            if prepare.skill_id:
+                lines.append(
+                    f"[ClawGUI-Skills] skill={prepare.display_name} "
+                    f"({prepare.skill_id}), score={prepare.retrieval_score:.2f}"
+                )
+            finish = getattr(skill_runtime, "finish_result", None)
+            if finish and finish.summary:
+                lines.append(f"[ClawGUI-Skills] {finish.summary}")
+            return "\n".join(lines)
+
+        return result
 
     async def _check_device_connection(self) -> str | None:
         """

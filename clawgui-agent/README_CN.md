@@ -36,6 +36,7 @@
 - [GUI 手机操控能力](#-gui-手机操控能力)
   - [Web UI](#web-ui)
   - [记忆系统](#记忆系统)
+  - [自进化技能模式](#自进化技能模式)
   - [支持的 GUI 模型](#支持的-gui-模型)
 - [目录结构](#-目录结构)
 - [许可证](#-许可证)
@@ -47,6 +48,7 @@
 - **ClawGUI-Eval 评测集成** — 内置 [ClawGUI-Eval](../clawgui-eval) 评测技能，用自然语言一句话即可启动 GUI Grounding 模型评测（环境检测 → 多 GPU 推理 → 判分 → 指标计算），自动监控进度并汇报结果与官方基线对比
 - **多模型适配** — 支持 AutoGLM、Qwen VL、UI-TARS、MAI-UI、GUI-Owl 等多种 VLM，通过 OpenAI 兼容 API 接入
 - **个性化记忆** — 自动学习用户偏好（联系人、常用 App、习惯），基于向量搜索的持久化记忆系统
+- **自进化技能** — 可选启用 [ClawGUI-Skills](../clawgui-skills)，按需检索、构建、注入和修订 GUI 任务技能包
 - **Episode 实时记录** — 每次任务执行过程（截图 + 模型输出 + 动作）以结构化 episode 形式保存，便于回放与数据集构建
 - **Web UI** — 提供 Gradio Web 界面，支持设备管理、任务执行可视化、手动接管、记忆管理等
 
@@ -62,13 +64,14 @@
 
 1. **截图** — 通过 ADB（`screencap`）、HDC 或 XCTest 捕获当前屏幕，具体取决于设备后端。
 2. **记忆检索** — 在向量记忆库中检索与当前任务相关的历史记忆（联系人、App 知识、用户偏好）。最相关的 top-k 条记忆追加至系统 Context。
-3. **历史构建** — 组装多轮对话历史：每个历史步骤贡献一个 `(用户: 截图+指令, 助手: 推理+动作)` 对，最多回溯 `history_length` 步。
-4. **VLM 调用** — 将提示词（System Prompt + 历史 + 当前截图 + 任务指令）通过 OpenAI 兼容 API 发送给已配置的 GUI 模型。
-5. **动作解析** — 从模型输出中提取结构化动作。不同模型使用不同的输出格式（`phone_agent/model/adapters.py` 中的 `autoglm`、`uitars`、`qwenvl`、`maiui`、`guiowl` 适配器）。
-6. **坐标归一化** — 将模型输出的坐标转换为设备绝对像素坐标。AutoGLM 使用 `[0, 1000]` 归一化坐标；UI-TARS 使用 `smart_resize` 空间中的绝对像素坐标；Qwen-VL 使用绝对像素；MAI-UI 使用 `[0, 1000]`。
-7. **动作执行** — 向设备后端发送动作：点击、长按、滑动、输入、Home、返回或任务完成。每种动作类型在 `phone_agent/actions/` 中有专属处理器。
-8. **轨迹记录** — 若 `traceEnabled=True`，将截图、推理过程和动作追加至 Episode Tracer，便于后续回放或训练数据导出。
-9. **记忆更新** — 任务完成后，从对话中提取联系人姓名、App 知识和用户习惯，以去重方式写入向量记忆库。
+3. **技能检索** — 若 `skillMode` 为 `reuse` 或 `evolve`，在 [ClawGUI-Skills](../clawgui-skills) 技能库中按 metadata 检索最相关技能；`evolve` 模式下无命中会构建新技能包。
+4. **历史构建** — 组装多轮对话历史：每个历史步骤贡献一个 `(用户: 截图+指令, 助手: 推理+动作)` 对，最多回溯 `history_length` 步。
+5. **VLM 调用** — 将提示词（System Prompt + 历史 + 当前截图 + 任务指令 + 可选技能上下文）通过 OpenAI 兼容 API 发送给已配置的 GUI 模型。
+6. **动作解析** — 从模型输出中提取结构化动作。不同模型使用不同的输出格式（`phone_agent/model/adapters.py` 中的 `autoglm`、`uitars`、`qwenvl`、`maiui`、`guiowl` 适配器）。
+7. **坐标归一化** — 将模型输出的坐标转换为设备绝对像素坐标。AutoGLM 使用 `[0, 1000]` 归一化坐标；UI-TARS 使用 `smart_resize` 空间中的绝对像素坐标；Qwen-VL 使用绝对像素；MAI-UI 使用 `[0, 1000]`。
+8. **动作执行** — 向设备后端发送动作：点击、长按、滑动、输入、Home、返回或任务完成。每种动作类型在 `phone_agent/actions/` 中有专属处理器。
+9. **轨迹记录** — 若 `traceEnabled=True` 或 `skillMode=evolve`，将截图、推理过程和动作追加至 Episode Tracer，便于后续回放、诊断或训练数据导出。
+10. **技能演化与记忆更新** — 任务完成后更新个性化记忆；若 `skillMode=evolve` 且任务失败，isolated verifier 会基于轨迹诊断并通过受限文件工具修订 `plan.md`、`backup.md` 或 `recover.md`，同时写入 failure example。
 
 该循环持续运行，直到模型输出 `terminate` 或 `answer` 动作，或达到 `max_steps` 上限。
 
@@ -165,7 +168,13 @@ nanobot onboard
       "promptTemplateLang": "cn",
       "promptTemplateStyle": "autoglm",
       "traceEnabled": false,
-      "traceDir": "gui_trace"
+      "traceDir": "gui_trace",
+      "skillMode": "off",
+      "skillsDir": "skill_store",
+      "skillRetrievalThreshold": 0.35,
+      "skillMaxContextChars": 6000,
+      "skillMaxIterations": 2,
+      "skillRequireReview": false
     },
     "exec": {
       "enable": true,
@@ -195,6 +204,12 @@ nanobot onboard
 | `promptTemplateStyle` | 提示词风格：`autoglm` / `uitars` / `qwenvl` 等 |
 | `traceEnabled` | 是否开启 Episode 记录 |
 | `traceDir` | Episode 保存目录 |
+| `skillMode` | 自进化技能模式：`off` / `trace` / `reuse` / `evolve` |
+| `skillsDir` | 技能库目录，保存技能包、版本和审计日志 |
+| `skillRetrievalThreshold` | 技能检索阈值，低于阈值不注入已有技能 |
+| `skillMaxContextChars` | 单次注入的技能上下文字符预算 |
+| `skillMaxIterations` | `evolve` 模式产生修订后允许的即时重试次数 |
+| `skillRequireReview` | 是否只保存 verifier 反馈、等待人工确认后再修订 |
 
 ### 3. 连接 Android 设备
 
@@ -412,11 +427,52 @@ python webui.py
 - **任务执行**：输入任务描述，实时查看截图和 AI 思考过程
 - **手动接管**：遇到验证码等场景可切换手动操作
 - **记忆管理**：查看/编辑/清除记忆数据
+- **技能库管理**：查看技能包名称、`skill_id`、成功率、修订次数、文档和失败案例
 - **配置面板**：图形化设置模型参数
 
 ### 记忆系统
 
 框架内置个性化记忆系统（`phone_agent/memory/`）。每次任务完成后，智能体自动从对话中提取结构化事实——联系人姓名与关系、App 专属知识、用户习惯与偏好——以 JSON 记录 + numpy 向量嵌入的形式持久化存储。执行后续任务时，语义最相关的 top-k 条记忆被检索出来并注入 System Context，让智能体认识"张三是用户的同事"，或知道用户偏好哪个音乐 App。重复记忆会被检测并合并而非累积，保持记忆库精简。支持多用户命名空间隔离。
+
+### 自进化技能模式
+
+ClawGUI-Agent 可选接入 [ClawGUI-Skills](../clawgui-skills)，该模块实现我们论文 **《Reflect, Revise, Reuse: Training-Free Skill Evolution for GUI Agents》** 中提出并验证的训练自由 GUI 技能自进化架构。技能模式默认关闭，只有显式选择 `reuse` 或 `evolve` 时才会增加技能上下文。
+
+| 模式 | 行为 |
+|------|------|
+| `off` | 默认模式，不检索、不注入、不演化 |
+| `trace` | 只记录轨迹，为后续离线技能演化准备 |
+| `reuse` | 检索已有技能包，命中后注入 `plan.md`、`backup.md`、`recover.md` 的精简上下文 |
+| `evolve` | 检索或构建技能包；失败后基于轨迹诊断并修订特定技能文件，加入 failure examples；PhoneAgent 会在产生修订后按 `skillMaxIterations` 即时重试 |
+
+技能包保存在 `skillsDir` 下：
+
+```text
+skill_store/<skill_id>/
+  meta_info.json
+  docs/plan.md
+  docs/backup.md
+  docs/recover.md
+  failure_examples/
+  versions/
+  edits.jsonl
+  runs.jsonl
+```
+
+在 Web UI 的「配置管理」中选择技能模式后，「对话控制」日志会显示命中的精简技能名、`skill_id`、检索分数、注入字符数、verifier 诊断和修订文件；「技能库」Tab 可查看具体技能包与演化历史。
+
+默认 `auto` 后端会复用当前 PhoneAgent 的 OpenAI 兼容模型接口：有接口时技能构建采用论文版三阶段 prompt generator（`meta+plan -> backup -> recover`），失败诊断采用 isolated verifier prompt，修订采用 `skill_revise` prompt + 受限文件工具；离线测试或接口不可用时会退回轻量 fallback。CLI 可用 `--skill-generator-mode`、`--skill-verifier-mode`、`--skill-revision-mode` 分别设为 `auto`、`model` 或 `fallback`。
+
+命令行也可以直接启用：
+
+```bash
+python main.py \
+  --skill-mode evolve \
+  --skills-dir skill_store \
+  --skill-threshold 0.35 \
+  --skill-max-iterations 2 \
+  "打开设置并开启蓝牙"
+```
 
 ### 支持的 GUI 模型
 
@@ -448,6 +504,7 @@ ClawGUI-Agent/
 │   ├── agent_ios.py             # IOSPhoneAgent 类
 │   ├── device_factory.py        # 设备类型工厂（ADB / HDC / XCTest）
 │   ├── tracer.py                # Episode 执行追踪器
+│   ├── skills_runtime.py        # ClawGUI-Skills 运行时桥接
 │   ├── config/                  # 配置与提示词（8 个模板文件）
 │   ├── model/                   # 模型客户端与适配器（5 个 VLM 适配器）
 │   ├── adb/                     # Android ADB 设备控制

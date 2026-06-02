@@ -19,6 +19,7 @@ class Screenshot:
     width: int
     height: int
     is_sensitive: bool = False
+    error_message: str = ""
 
 
 def get_screenshot(

@@ -156,6 +156,15 @@ class GUIToolConfig(Base):
     prompt_template_style: str = "autoglm"  # autoglm / uitars / qwenvl / maiui / guiowl
     trace_enabled: bool = False
     trace_dir: str = "gui_trace"
+    skill_mode: Literal["off", "trace", "reuse", "evolve"] = "off"
+    skills_dir: str = "skill_store"
+    skill_retrieval_threshold: float = 0.35
+    skill_max_context_chars: int = 6000
+    skill_max_iterations: int = 2
+    skill_require_review: bool = False
+    skill_generator_mode: Literal["auto", "model", "fallback"] = "auto"
+    skill_verifier_mode: Literal["auto", "model", "fallback"] = "auto"
+    skill_revision_mode: Literal["auto", "model", "fallback"] = "auto"
 
     @model_validator(mode="after")
     def _check_external_model_config(self) -> "GUIToolConfig":
