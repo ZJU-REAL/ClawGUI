@@ -174,6 +174,15 @@ class AgentLoop:
                 prompt_template_style=self._gui_config.prompt_template_style,
                 trace_enabled=self._gui_config.trace_enabled,
                 trace_dir=self._gui_config.trace_dir,
+                skill_mode=self._gui_config.skill_mode,
+                skills_dir=self._gui_config.skills_dir,
+                skill_retrieval_threshold=self._gui_config.skill_retrieval_threshold,
+                skill_max_context_chars=self._gui_config.skill_max_context_chars,
+                skill_max_iterations=self._gui_config.skill_max_iterations,
+                skill_require_review=self._gui_config.skill_require_review,
+                skill_generator_mode=self._gui_config.skill_generator_mode,
+                skill_verifier_mode=self._gui_config.skill_verifier_mode,
+                skill_revision_mode=self._gui_config.skill_revision_mode,
             ))
 
     async def _connect_mcp(self) -> None:

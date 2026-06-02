@@ -36,6 +36,7 @@
 - [GUI Phone Control](#-gui-phone-control)
   - [Web UI](#web-ui)
   - [Memory System](#memory-system)
+  - [Self-Evolving Skill Mode](#self-evolving-skill-mode)
   - [Supported GUI Models](#supported-gui-models)
 - [Directory Structure](#-directory-structure)
 - [License](#-license)
@@ -47,6 +48,7 @@
 - **ClawGUI-Eval Integration** — Built-in [ClawGUI-Eval](../clawgui-eval) evaluation skill, launch GUI Grounding model benchmarks with natural language (environment check → multi-GPU inference → judging → metric calculation), with automatic progress monitoring and result comparison against official baselines
 - **Multi-Model Support** — Compatible with AutoGLM, Qwen VL, UI-TARS, MAI-UI, GUI-Owl and more VLMs, connected via OpenAI-compatible API
 - **Personalized Memory** — Automatically learns user preferences (contacts, frequently used apps, habits), with a vector-search-based persistent memory system
+- **Self-evolving Skills** — Optionally enable [ClawGUI-Skills](../clawgui-skills) to retrieve, build, inject, and revise GUI task skill packages
 - **Real-time Episode Recording** — Each task execution (screenshots + model outputs + actions) is saved as a structured episode, enabling replay and dataset construction
 - **Web UI** — Gradio-based web interface for device management, task execution visualization, manual takeover, memory management and more
 
@@ -62,13 +64,14 @@ Understanding the execution loop helps with configuration and debugging. `PhoneA
 
 1. **Screenshot** — Capture the current screen via ADB (`screencap`), HDC, or XCTest depending on the device backend.
 2. **Memory retrieval** — Query the vector memory store for relevant memories from past interactions (contacts, app knowledge, user preferences). Top-k similar memories are appended to the system context.
-3. **History construction** — Assemble the multi-turn conversation history: each past step contributes a `(user: screenshot + instruction, assistant: reasoning + action)` pair, up to `history_length` steps back.
-4. **VLM call** — Send the prompt (system prompt + history + current screenshot + task instruction) to the configured GUI model via OpenAI-compatible API.
-5. **Action parsing** — Extract the structured action from the model output. Different models use different output formats (`autoglm`, `uitars`, `qwenvl`, `maiui`, `guiowl` adapters in `phone_agent/model/adapters.py`).
-6. **Coordinate normalization** — Convert the model's output coordinates to absolute device pixels. AutoGLM uses `[0, 1000]` normalized coordinates; UI-TARS uses absolute pixel coordinates in `smart_resize` space; Qwen-VL uses absolute pixels; MAI-UI uses `[0, 1000]`.
-7. **Action execution** — Send the action to the device backend: tap, long-press, swipe, type, home, back, or task-complete. Each action type has a dedicated handler in `phone_agent/actions/`.
-8. **Trace recording** — If `traceEnabled=True`, append the screenshot, reasoning, and action to the episode tracer for later replay or training data export.
-9. **Memory update** — After task completion, extract contact names, app knowledge, and user habits from the conversation and upsert them into the vector store with deduplication.
+3. **Skill retrieval** — If `skillMode` is `reuse` or `evolve`, retrieve the most relevant skill from [ClawGUI-Skills](../clawgui-skills) by metadata. In `evolve` mode, no-match tasks materialize a new skill package.
+4. **History construction** — Assemble the multi-turn conversation history: each past step contributes a `(user: screenshot + instruction, assistant: reasoning + action)` pair, up to `history_length` steps back.
+5. **VLM call** — Send the prompt (system prompt + history + current screenshot + task instruction + optional skill context) to the configured GUI model via OpenAI-compatible API.
+6. **Action parsing** — Extract the structured action from the model output. Different models use different output formats (`autoglm`, `uitars`, `qwenvl`, `maiui`, `guiowl` adapters in `phone_agent/model/adapters.py`).
+7. **Coordinate normalization** — Convert the model's output coordinates to absolute device pixels. AutoGLM uses `[0, 1000]` normalized coordinates; UI-TARS uses absolute pixel coordinates in `smart_resize` space; Qwen-VL uses absolute pixels; MAI-UI uses `[0, 1000]`.
+8. **Action execution** — Send the action to the device backend: tap, long-press, swipe, type, home, back, or task-complete. Each action type has a dedicated handler in `phone_agent/actions/`.
+9. **Trace recording** — If `traceEnabled=True` or `skillMode=evolve`, append the screenshot, reasoning, and action to the episode tracer for later replay, diagnosis, or training data export.
+10. **Skill evolution and memory update** — After completion, update personalized memory. If `skillMode=evolve` and the task fails, an isolated verifier diagnoses the trace and uses restricted file tools to revise `plan.md`, `backup.md`, or `recover.md`, while adding a failure example.
 
 This loop runs until the model outputs a `terminate` or `answer` action, or `max_steps` is reached.
 
@@ -165,7 +168,13 @@ Then edit `~/.nanobot/config.json`. Here is a reference configuration:
       "promptTemplateLang": "en",
       "promptTemplateStyle": "autoglm",
       "traceEnabled": false,
-      "traceDir": "gui_trace"
+      "traceDir": "gui_trace",
+      "skillMode": "off",
+      "skillsDir": "skill_store",
+      "skillRetrievalThreshold": 0.35,
+      "skillMaxContextChars": 6000,
+      "skillMaxIterations": 2,
+      "skillRequireReview": false
     },
     "exec": {
       "enable": true,
@@ -195,6 +204,12 @@ Then edit `~/.nanobot/config.json`. Here is a reference configuration:
 | `promptTemplateStyle` | Prompt template style: `autoglm` / `uitars` / `qwenvl` etc. |
 | `traceEnabled` | Enable episode recording |
 | `traceDir` | Episode save directory |
+| `skillMode` | Self-evolving skill mode: `off` / `trace` / `reuse` / `evolve` |
+| `skillsDir` | Skill library directory for packages, versions, and audit logs |
+| `skillRetrievalThreshold` | Minimum retrieval score before injecting an existing skill |
+| `skillMaxContextChars` | Character budget for injected skill context |
+| `skillMaxIterations` | Maximum immediate retry attempts after an evolve-mode revision |
+| `skillRequireReview` | Save verifier feedback without auto-editing until reviewed |
 
 ### 3. Connect Android Device
 
@@ -412,11 +427,52 @@ Opens at `http://localhost:7860` by default, featuring:
 - **Task Execution**: Enter task descriptions, watch screenshots and AI reasoning in real-time
 - **Manual Takeover**: Switch to manual control for scenarios like CAPTCHAs
 - **Memory Management**: View/edit/clear memory data
+- **Skill Library Management**: Inspect skill names, `skill_id`, success rate, revisions, docs, and failure examples
 - **Configuration Panel**: Graphical model parameter settings
 
 ### Memory System
 
 The framework includes a built-in personalized memory system (`phone_agent/memory/`). After each completed task, the agent extracts structured facts from the conversation — contact names and relationships, app-specific knowledge, user habits and preferences — and upserts them into a persistent store as JSON records with numpy vector embeddings. On subsequent tasks, the top-k most semantically similar memories are retrieved and injected into the system context, letting the agent recognize "Zhang San" as the user's colleague or know which music app the user prefers. Duplicate memories are detected and merged rather than accumulated, keeping the store lean. Multi-user isolation is supported via per-user namespaces.
+
+### Self-Evolving Skill Mode
+
+ClawGUI-Agent can optionally use [ClawGUI-Skills](../clawgui-skills), the training-free GUI skill evolution architecture proposed and validated in our paper **“Reflect, Revise, Reuse: Training-Free Skill Evolution for GUI Agents.”** Skill mode is disabled by default; context is added only when `reuse` or `evolve` is selected.
+
+| Mode | Behavior |
+|------|----------|
+| `off` | Default. No retrieval, injection, or evolution |
+| `trace` | Record trajectories for later offline skill evolution |
+| `reuse` | Retrieve an existing skill and inject compact `plan.md`, `backup.md`, and `recover.md` context |
+| `evolve` | Retrieve or build a skill package; after failure, diagnose the trace, revise targeted skill files, add failure examples, and let PhoneAgent retry immediately when a revision is produced |
+
+Skill packages live under `skillsDir`:
+
+```text
+skill_store/<skill_id>/
+  meta_info.json
+  docs/plan.md
+  docs/backup.md
+  docs/recover.md
+  failure_examples/
+  versions/
+  edits.jsonl
+  runs.jsonl
+```
+
+In the Web UI, the configuration tab chooses the skill mode; the task log shows matched skill name, `skill_id`, retrieval score, injected context size, verifier diagnosis, and edited files. The skill library tab lets you inspect the actual package and evolution history.
+
+The default `auto` backend reuses the current PhoneAgent OpenAI-compatible model endpoint: skill creation uses the paper's three-step prompt generator (`meta+plan -> backup -> recover`), failure diagnosis uses the isolated verifier prompt, and revision uses the `skill_revise` prompt plus restricted file tools. Offline tests or unavailable endpoints fall back to the lightweight implementation. CLI flags `--skill-generator-mode`, `--skill-verifier-mode`, and `--skill-revision-mode` accept `auto`, `model`, or `fallback`.
+
+The CLI can enable it directly:
+
+```bash
+python main.py \
+  --skill-mode evolve \
+  --skills-dir skill_store \
+  --skill-threshold 0.35 \
+  --skill-max-iterations 2 \
+  "Open Settings and turn on Bluetooth"
+```
 
 ### Supported GUI Models
 
@@ -448,6 +504,7 @@ ClawGUI-Agent/
 │   ├── agent_ios.py             # IOSPhoneAgent class
 │   ├── device_factory.py        # Device type factory (ADB / HDC / XCTest)
 │   ├── tracer.py                # Episode execution tracer
+│   ├── skills_runtime.py        # ClawGUI-Skills runtime bridge
 │   ├── config/                  # Configuration & prompts (8 template files)
 │   ├── model/                   # Model clients & adapters (5 VLM adapters)
 │   ├── adb/                     # Android ADB device control

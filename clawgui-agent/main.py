@@ -523,6 +523,66 @@ Examples:
     )
 
     parser.add_argument(
+        "--skill-mode",
+        type=str,
+        choices=["off", "trace", "reuse", "evolve"],
+        default=os.getenv("PHONE_AGENT_SKILL_MODE", "off"),
+        help="Self-evolving skill mode (default: off)",
+    )
+
+    parser.add_argument(
+        "--skills-dir",
+        type=str,
+        default=os.getenv("PHONE_AGENT_SKILLS_DIR", "skill_store"),
+        help="ClawGUI-Skills store directory",
+    )
+
+    parser.add_argument(
+        "--skill-threshold",
+        type=float,
+        default=float(os.getenv("PHONE_AGENT_SKILL_THRESHOLD", "0.35")),
+        help="Minimum retrieval score for reusing an existing skill",
+    )
+
+    parser.add_argument(
+        "--skill-max-context",
+        type=int,
+        default=int(os.getenv("PHONE_AGENT_SKILL_MAX_CONTEXT", "6000")),
+        help="Character budget for injected skill context",
+    )
+
+    parser.add_argument(
+        "--skill-max-iterations",
+        type=int,
+        default=int(os.getenv("PHONE_AGENT_SKILL_MAX_ITERATIONS", "2")),
+        help="Maximum evolve-mode attempts after skill revisions",
+    )
+
+    parser.add_argument(
+        "--skill-generator-mode",
+        type=str,
+        choices=["auto", "model", "fallback"],
+        default=os.getenv("PHONE_AGENT_SKILL_GENERATOR_MODE", "auto"),
+        help="Skill generator backend: auto uses paper prompts when a model endpoint is configured",
+    )
+
+    parser.add_argument(
+        "--skill-verifier-mode",
+        type=str,
+        choices=["auto", "model", "fallback"],
+        default=os.getenv("PHONE_AGENT_SKILL_VERIFIER_MODE", "auto"),
+        help="Skill verifier backend: auto uses the isolated verifier prompt when available",
+    )
+
+    parser.add_argument(
+        "--skill-revision-mode",
+        type=str,
+        choices=["auto", "model", "fallback"],
+        default=os.getenv("PHONE_AGENT_SKILL_REVISION_MODE", "auto"),
+        help="Skill revision backend: auto uses the paper refiner prompt when available",
+    )
+
+    parser.add_argument(
         "task",
         nargs="?",
         type=str,
@@ -782,6 +842,14 @@ def main():
             verbose=not args.quiet,
             lang=args.lang,
             model_type=args.model_type,
+            skill_mode=args.skill_mode,
+            skills_dir=args.skills_dir,
+            skill_retrieval_threshold=args.skill_threshold,
+            skill_max_context_chars=args.skill_max_context,
+            skill_max_iterations=args.skill_max_iterations,
+            skill_generator_mode=args.skill_generator_mode,
+            skill_verifier_mode=args.skill_verifier_mode,
+            skill_revision_mode=args.skill_revision_mode,
         )
 
         agent = PhoneAgent(
@@ -801,6 +869,8 @@ def main():
     print(f"Max Steps: {agent_config.max_steps}")
     print(f"Language: {agent_config.lang}")
     print(f"Device Type: {args.device_type.upper()}")
+    if device_type != DeviceType.IOS:
+        print(f"Skill Mode: {args.skill_mode}")
 
     # Show iOS-specific config
     if device_type == DeviceType.IOS:

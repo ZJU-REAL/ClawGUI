@@ -75,7 +75,13 @@ The GUI tool is configured in `~/.nanobot/config.json` under `tools.gui`:
       "promptTemplateLang": "cn",
       "promptTemplateStyle": "autoglm",
       "traceEnabled": false,
-      "traceDir": "gui_trace"
+      "traceDir": "gui_trace",
+      "skillMode": "off",
+      "skillsDir": "skill_store",
+      "skillRetrievalThreshold": 0.35,
+      "skillMaxContextChars": 6000,
+      "skillMaxIterations": 2,
+      "skillRequireReview": false
     }
   }
 }
@@ -95,6 +101,16 @@ The GUI tool is configured in `~/.nanobot/config.json` under `tools.gui`:
 | `promptTemplateStyle` | Prompt template: `autoglm` / `uitars` / `qwenvl` / `maiui` / `guiowl` |
 | `traceEnabled` | Save execution trace to `traceDir` |
 | `traceDir` | Directory for episode folders and screenshots |
+| `skillMode` | Runtime skill mode: `off` / `trace` / `reuse` / `evolve` |
+| `skillsDir` | ClawGUI-Skills store directory |
+| `skillRetrievalThreshold` | Minimum score for reusing an existing skill |
+| `skillMaxContextChars` | Character budget for injected skill context |
+| `skillMaxIterations` | Maximum immediate retry attempts after an evolve-mode revision |
+| `skillRequireReview` | Save verifier feedback without auto-editing until reviewed |
+
+## Runtime Skills
+
+`skillMode` controls ClawGUI-Skills runtime packages, not nanobot's static `SKILL.md` files. In `reuse` mode the GUI tool retrieves a matching skill package and injects compact execution guidance. In `evolve` mode it can also materialize a new package, diagnose failed traces, revise `plan.md` / `backup.md` / `recover.md`, and add `failure_examples/`.
 
 ## Troubleshooting
 

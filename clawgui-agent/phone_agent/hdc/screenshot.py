@@ -21,6 +21,7 @@ class Screenshot:
     width: int
     height: int
     is_sensitive: bool = False
+    error_message: str = ""
 
 
 def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screenshot:
@@ -54,7 +55,9 @@ def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screensho
             timeout=timeout,
         )
 
-        # Check for screenshot failure (sensitive screen)
+        # Check for screenshot failure. Not every HDC failure is a sensitive
+        # screen; stale sessions and missing connect keys should be surfaced as
+        # device errors instead of sending a black image to the model.
         output = result.stdout + result.stderr
         if "fail" in output.lower() or "error" in output.lower() or "not found" in output.lower():
             # Try method 2: snapshot_display (older versions or different devices)
@@ -66,11 +69,14 @@ def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screensho
             )
             output = result.stdout + result.stderr
             if "fail" in output.lower() or "error" in output.lower():
-                return _create_fallback_screenshot(is_sensitive=True)
+                return _create_fallback_screenshot(
+                    is_sensitive=_is_sensitive_capture_failure(output),
+                    error_message=_clean_error(output) or "HDC screenshot command failed.",
+                )
 
         # Pull screenshot to local temp path
         # Note: remote file is JPEG, but PIL can open it regardless of local extension
-        _run_hdc_command(
+        recv_result = _run_hdc_command(
             hdc_prefix + ["file", "recv", remote_path, temp_path],
             capture_output=True,
             text=True,
@@ -78,7 +84,11 @@ def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screensho
         )
 
         if not os.path.exists(temp_path):
-            return _create_fallback_screenshot(is_sensitive=False)
+            recv_output = recv_result.stdout + recv_result.stderr
+            return _create_fallback_screenshot(
+                is_sensitive=_is_sensitive_capture_failure(recv_output),
+                error_message=_clean_error(recv_output) or "HDC did not return a screenshot file.",
+            )
 
         # Read JPEG image and convert to PNG for model inference
         # PIL automatically detects the image format from file content
@@ -98,7 +108,7 @@ def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screensho
 
     except Exception as e:
         print(f"Screenshot error: {e}")
-        return _create_fallback_screenshot(is_sensitive=False)
+        return _create_fallback_screenshot(is_sensitive=False, error_message=str(e))
 
 
 def _get_hdc_prefix(device_id: str | None) -> list:
@@ -108,7 +118,7 @@ def _get_hdc_prefix(device_id: str | None) -> list:
     return ["hdc"]
 
 
-def _create_fallback_screenshot(is_sensitive: bool) -> Screenshot:
+def _create_fallback_screenshot(is_sensitive: bool, error_message: str = "") -> Screenshot:
     """Create a black fallback image when screenshot fails."""
     default_width, default_height = 1080, 2400
 
@@ -122,4 +132,36 @@ def _create_fallback_screenshot(is_sensitive: bool) -> Screenshot:
         width=default_width,
         height=default_height,
         is_sensitive=is_sensitive,
+        error_message=error_message,
     )
+
+
+def _is_sensitive_capture_failure(output: str) -> bool:
+    """Return True only for messages that look like screenshot protection."""
+    text = (output or "").lower()
+    connection_markers = [
+        "bind tartget session is dead",
+        "bind target session is dead",
+        "need connect-key",
+        "connect key",
+        "no devices",
+        "device not found",
+        "not connected",
+        "offline",
+    ]
+    if any(marker in text for marker in connection_markers):
+        return False
+    sensitive_markers = [
+        "secure",
+        "permission denied",
+        "protected",
+        "privacy",
+        "sensitive",
+        "not allow",
+        "not permitted",
+    ]
+    return any(marker in text for marker in sensitive_markers)
+
+
+def _clean_error(output: str) -> str:
+    return " ".join((output or "").replace("\r", " ").replace("\n", " ").split())

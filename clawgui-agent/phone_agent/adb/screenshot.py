@@ -20,6 +20,7 @@ class Screenshot:
     width: int
     height: int
     is_sensitive: bool = False
+    error_message: str = ""
 
 
 def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screenshot:
@@ -52,10 +53,13 @@ def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screensho
         # Check for screenshot failure (sensitive screen)
         output = result.stdout + result.stderr
         if "Status: -1" in output or "Failed" in output:
-            return _create_fallback_screenshot(is_sensitive=True)
+            return _create_fallback_screenshot(
+                is_sensitive=_is_sensitive_capture_failure(output),
+                error_message=_clean_error(output) or "ADB screenshot command failed.",
+            )
 
         # Pull screenshot to local temp path
-        subprocess.run(
+        pull_result = subprocess.run(
             adb_prefix + ["pull", "/sdcard/tmp.png", temp_path],
             capture_output=True,
             text=True,
@@ -63,7 +67,11 @@ def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screensho
         )
 
         if not os.path.exists(temp_path):
-            return _create_fallback_screenshot(is_sensitive=False)
+            pull_output = pull_result.stdout + pull_result.stderr
+            return _create_fallback_screenshot(
+                is_sensitive=_is_sensitive_capture_failure(pull_output),
+                error_message=_clean_error(pull_output) or "ADB did not return a screenshot file.",
+            )
 
         # Read and encode image
         img = Image.open(temp_path)
@@ -82,7 +90,7 @@ def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screensho
 
     except Exception as e:
         print(f"Screenshot error: {e}")
-        return _create_fallback_screenshot(is_sensitive=False)
+        return _create_fallback_screenshot(is_sensitive=False, error_message=str(e))
 
 
 def _get_adb_prefix(device_id: str | None) -> list:
@@ -92,7 +100,7 @@ def _get_adb_prefix(device_id: str | None) -> list:
     return ["adb"]
 
 
-def _create_fallback_screenshot(is_sensitive: bool) -> Screenshot:
+def _create_fallback_screenshot(is_sensitive: bool, error_message: str = "") -> Screenshot:
     """Create a black fallback image when screenshot fails."""
     default_width, default_height = 1080, 2400
 
@@ -106,4 +114,35 @@ def _create_fallback_screenshot(is_sensitive: bool) -> Screenshot:
         width=default_width,
         height=default_height,
         is_sensitive=is_sensitive,
+        error_message=error_message,
     )
+
+
+def _is_sensitive_capture_failure(output: str) -> bool:
+    """Return True only for messages that look like screenshot protection."""
+    text = (output or "").lower()
+    connection_markers = [
+        "no devices",
+        "device not found",
+        "offline",
+        "unauthorized",
+        "more than one device",
+        "closed",
+    ]
+    if any(marker in text for marker in connection_markers):
+        return False
+    sensitive_markers = [
+        "secure",
+        "permission denied",
+        "protected",
+        "privacy",
+        "sensitive",
+        "not allow",
+        "not permitted",
+        "status: -1",
+    ]
+    return any(marker in text for marker in sensitive_markers)
+
+
+def _clean_error(output: str) -> str:
+    return " ".join((output or "").replace("\r", " ").replace("\n", " ").split())

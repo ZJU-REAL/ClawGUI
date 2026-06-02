@@ -35,7 +35,28 @@ import time
 import traceback
 from dataclasses import dataclass
 from io import BytesIO
+from pathlib import Path
 from typing import Generator, Any
+
+
+def _prepare_local_runtime_env() -> None:
+    """Keep Gradio startup local and stable on Windows/proxy setups."""
+    runtime_tmp = Path(__file__).resolve().parent / ".runtime" / "tmp"
+    runtime_tmp.mkdir(parents=True, exist_ok=True)
+    for key in ("TMP", "TEMP", "TMPDIR"):
+        os.environ.setdefault(key, str(runtime_tmp))
+
+    local_hosts = ["localhost", "127.0.0.1", "::1", "0.0.0.0"]
+    for key in ("NO_PROXY", "no_proxy"):
+        current = os.environ.get(key, "")
+        entries = [item.strip() for item in current.split(",") if item.strip()]
+        for host in local_hosts:
+            if host not in entries:
+                entries.append(host)
+        os.environ[key] = ",".join(entries)
+
+
+_prepare_local_runtime_env()
 
 import gradio as gr
 from PIL import Image
@@ -62,6 +83,14 @@ except ImportError:
     HAS_MEMORY = False
     MemoryManager = None
     MemoryType = None
+
+try:
+    from phone_agent.skills_runtime import PhoneAgentSkillRuntime, append_text_to_messages
+    HAS_SKILLS = True
+except ImportError:
+    HAS_SKILLS = False
+    PhoneAgentSkillRuntime = None
+    append_text_to_messages = None
 
 
 # ==================== 全局状态 ====================
@@ -432,6 +461,11 @@ class StreamingAgent:
         device_type: DeviceType,
         model_type: str = "auto",  # 新增：模型类型 (auto/autoglm/uitars)
         user_id: str = "default",  # 用户 ID 用于记忆
+        skill_mode: str = "off",
+        skills_dir: str = "skill_store",
+        skill_retrieval_threshold: float = 0.35,
+        skill_max_context_chars: int = 6000,
+        skill_max_iterations: int = 2,
     ):
         self.model_config = model_config
         self.agent_config = agent_config
@@ -439,6 +473,15 @@ class StreamingAgent:
         self._context: list[dict[str, Any]] = []
         self._step_count = 0
         self._should_stop = False
+        self.skill_mode = (skill_mode or "off").lower()
+        self.skills_dir = skills_dir or "skill_store"
+        self.skill_retrieval_threshold = float(skill_retrieval_threshold)
+        self.skill_max_context_chars = int(skill_max_context_chars)
+        self.skill_max_iterations = int(skill_max_iterations)
+        self.skill_runtime = None
+        self._skill_context = ""
+        self._skill_prepared = False
+        self.tracer = None
         
         # 初始化模型客户端
         self.client = OpenAI(base_url=model_config.base_url, api_key=model_config.api_key)
@@ -450,6 +493,29 @@ class StreamingAgent:
                 self.memory_manager = get_memory_manager(user_id)
             except Exception as e:
                 print(f"记忆系统初始化失败: {e}")
+
+        if self.skill_mode != "off":
+            if HAS_SKILLS and PhoneAgentSkillRuntime is not None:
+                try:
+                    platform = "iOS" if device_type == DeviceType.IOS else "Android"
+                    self.skill_runtime = PhoneAgentSkillRuntime(
+                        mode=self.skill_mode,
+                        store_dir=self.skills_dir,
+                        retrieval_threshold=self.skill_retrieval_threshold,
+                        max_context_chars=self.skill_max_context_chars,
+                        max_iterations=self.skill_max_iterations,
+                        require_review=False,
+                        platform=platform,
+                        model_base_url=self.model_config.base_url,
+                        model_api_key=self.model_config.api_key,
+                        model_name=self.model_config.model_name,
+                        model_temperature=self.model_config.temperature,
+                        model_max_tokens=self.model_config.max_tokens,
+                    )
+                except Exception as e:
+                    print(f"自进化技能系统初始化失败: {e}")
+            else:
+                print("自进化技能系统未安装，已跳过技能模式")
         
         # 确定模型类型并获取适配器
         if model_type == "auto":
@@ -516,6 +582,13 @@ class StreamingAgent:
         self._should_stop = False
         self._task_success = False
         self._original_task = task  # 保存原始任务
+        self._skill_context = ""
+        self._skill_prepared = False
+        self.tracer = None
+        takeover_count = 0
+
+        thinking_log = ""
+        action_log = ""
         
         # 清除 adapter 操作历史（QwenVL / GUI-Owl 使用）
         if hasattr(self._adapter, 'clear_history'):
@@ -524,9 +597,17 @@ class StreamingAgent:
         # 🧠 记忆系统：任务开始
         if self.memory_manager:
             self.memory_manager.start_task(task)
-        
-        thinking_log = ""
-        action_log = ""
+
+        if self.skill_runtime:
+            try:
+                from phone_agent.tracer import GUITracer
+                trace_dir = getattr(self.agent_config, "trace_dir", "gui_trace")
+                self.tracer = GUITracer(trace_dir=trace_dir)
+                self.tracer.start_task(task, model=self.model_config.model_name)
+                action_log += f"🧩 技能轨迹: **已记录** (dir: `{trace_dir}`)\n"
+            except Exception as e:
+                self.tracer = None
+                action_log += f"⚠️ 技能轨迹记录初始化失败: {e}\n"
         
         # 显示使用的模型类型
         if self._is_uitars:
@@ -540,6 +621,15 @@ class StreamingAgent:
         else:
             model_type_name = "AutoGLM"
         action_log += f"🤖 使用模型适配器: **{model_type_name}**\n"
+        if self.skill_mode == "off":
+            action_log += "🧩 自进化技能库: **未启用**\n"
+        elif self.skill_runtime:
+            action_log += (
+                f"🧩 自进化技能库: **{self.skill_mode}** "
+                f"(store: `{self.skills_dir}`)\n"
+            )
+        else:
+            action_log += "🧩 自进化技能库: **初始化失败或未安装**\n"
         
         # 显示记忆系统状态
         if self.memory_manager:
@@ -567,6 +657,19 @@ class StreamingAgent:
             app_state.waiting_for_takeover = False
             app_state.takeover_message = ""
             app_state.takeover_continue_event = None
+
+        def finish_blocked_by_takeover(reason: str, thinking_log: str, action_log: str):
+            """End the current run when a sensitive screen still blocks automation."""
+            if self.memory_manager:
+                self.memory_manager.end_task(success=False, result=reason)
+            if self.tracer:
+                try:
+                    self.tracer.end_task(result=reason, total_steps=self._step_count)
+                except Exception:
+                    pass
+            if self.skill_runtime:
+                action_log += self._finish_skill_runtime(False, reason)
+            return thinking_log, action_log, None
         
         # 初始化 action handler
         if self._is_uitars:
@@ -627,7 +730,9 @@ class StreamingAgent:
         
         if result["finished"]:
             return
-        
+        if result.get("takeover_requested"):
+            takeover_count += 1
+
         thinking_log = result["thinking_log"]
         action_log = result["action_log"]
         
@@ -635,11 +740,25 @@ class StreamingAgent:
         while self._step_count < self.agent_config.max_steps and not self._should_stop:
             result = yield from self._execute_step_streaming(
                 None, False, thinking_log, action_log,
-                get_screenshot_func, get_current_app_func, action_handler
+                get_screenshot_func, get_current_app_func, action_handler,
+                takeover_retry_block=takeover_count >= 1,
             )
             
             if result["finished"]:
                 return
+            if result.get("takeover_requested"):
+                takeover_count += 1
+                if takeover_count >= 2:
+                    reason = "Sensitive screen still blocks automation after manual takeover."
+                    action_log = result["action_log"]
+                    action_log += (
+                        "\n\n⛔ **仍停留在敏感屏幕**：系统再次检测到需要人工接管。"
+                        "请先在手机上完成登录/验证并进入可截图的飞书界面，然后重新发起任务。"
+                    )
+                    yield from (finish_blocked_by_takeover(reason, result["thinking_log"], action_log),)
+                    return
+            else:
+                takeover_count = 0
                 
             thinking_log = result["thinking_log"]
             action_log = result["action_log"]
@@ -649,6 +768,25 @@ class StreamingAgent:
             # 🧠 记忆系统：任务被终止
             if self.memory_manager:
                 self.memory_manager.end_task(success=False, result="用户终止")
+            if self.tracer:
+                try:
+                    self.tracer.end_task(result="用户终止", total_steps=self._step_count)
+                except Exception:
+                    pass
+            if self.skill_runtime:
+                action_log += self._finish_skill_runtime(False, "用户终止")
+            yield thinking_log, action_log, None
+        elif self._step_count >= self.agent_config.max_steps:
+            action_log += "\n\n⚠️ 已达到最大步数"
+            if self.memory_manager:
+                self.memory_manager.end_task(success=False, result="Max steps reached")
+            if self.tracer:
+                try:
+                    self.tracer.end_task(result="Max steps reached", total_steps=self._step_count)
+                except Exception:
+                    pass
+            if self.skill_runtime:
+                action_log += self._finish_skill_runtime(False, "Max steps reached")
             yield thinking_log, action_log, None
     
     def _execute_step_streaming(
@@ -660,6 +798,7 @@ class StreamingAgent:
         get_screenshot_func,
         get_current_app_func,
         action_handler,
+        takeover_retry_block: bool = False,
     ) -> Generator[tuple[str, str, Image.Image | None], None, dict]:
         """执行单个步骤并流式输出"""
         from phone_agent.actions.handler import parse_action, finish
@@ -694,8 +833,55 @@ class StreamingAgent:
                 screenshot_img = Image.open(BytesIO(img_data))
             except:
                 pass
+
+        screenshot_blocker = _screenshot_blocker_message(screenshot)
+        if screenshot_blocker:
+            action_log += f"\n{screenshot_blocker}\n"
+            if self.memory_manager:
+                self.memory_manager.end_task(success=False, result=screenshot_blocker)
+            if self.tracer:
+                try:
+                    self.tracer.end_task(result=screenshot_blocker, total_steps=self._step_count)
+                except Exception:
+                    pass
+            if self.skill_runtime:
+                action_log += self._finish_skill_runtime(False, screenshot_blocker)
+            yield thinking_log, action_log, screenshot_img
+            return {
+                "finished": True,
+                "thinking_log": thinking_log,
+                "action_log": action_log,
+                "takeover_requested": bool(getattr(screenshot, "is_sensitive", False)),
+            }
         
         yield thinking_log, action_log, screenshot_img
+
+        if is_first and user_prompt and self.skill_runtime and not self._skill_prepared:
+            try:
+                platform = "iOS" if self.device_type == DeviceType.IOS else "Android"
+                prepare_result = self.skill_runtime.prepare(
+                    task=user_prompt,
+                    current_app=current_app,
+                    screenshot=screenshot,
+                    platform=platform,
+                )
+                self._skill_prepared = True
+                self._skill_context = prepare_result.context
+                action_log += f"\n🧩 **技能检索 / 构建:** {prepare_result.summary or prepare_result.status}\n"
+                if prepare_result.has_skill:
+                    action_log += (
+                        f"- 技能名: **{prepare_result.display_name}**\n"
+                        f"- 技能 ID: `{prepare_result.skill_id}`\n"
+                        f"- 检索分数: `{prepare_result.retrieval_score:.2f}`\n"
+                    )
+                elif prepare_result.status == "trace_only":
+                    action_log += "- trace 模式仅记录轨迹，不注入技能上下文。\n"
+                else:
+                    action_log += "- 当前任务没有命中可复用技能。\n"
+            except Exception as e:
+                self._skill_prepared = True
+                action_log += f"\n🧩 **技能准备失败:** {e}\n"
+            yield thinking_log, action_log, screenshot_img
         
         # 根据模型类型构建消息
         if self._is_uitars or self._is_qwenvl or self._is_maiui or self._is_guiowl:
@@ -720,6 +906,10 @@ class StreamingAgent:
                     self._inject_memory_into_context(memory_context)
                     action_log += f"\n📋 **检索到的用户记忆:**\n```\n{memory_context}\n```\n"
             
+            if is_first_build and self._skill_context and append_text_to_messages is not None:
+                append_text_to_messages(self._context, self._skill_context)
+                action_log += f"\n🧩 **已注入技能上下文:** {len(self._skill_context)} chars\n"
+
             # 限制上下文中的图片数量
             if self._is_qwenvl or self._is_guiowl:
                 # QwenVL / GUI-Owl: 只保留 1 张图片（当前）
@@ -746,6 +936,7 @@ class StreamingAgent:
             if is_first:
                 # 获取基础 system prompt
                 base_prompt = get_system_prompt(self.agent_config.lang)
+                action_log_extra = ""
                 
                 # 🧠 注入个性化记忆上下文
                 if self.memory_manager and HAS_MEMORY:
@@ -758,7 +949,10 @@ class StreamingAgent:
                         action_log_extra = f"\n\n📋 **检索到的用户记忆:**\n```\n{context}\n```\n"
                 else:
                     system_prompt = base_prompt
-                    action_log_extra = ""
+
+                if self._skill_context:
+                    system_prompt = system_prompt + f"\n\n{self._skill_context}"
+                    action_log_extra += f"\n\n🧩 **已注入技能上下文:** {len(self._skill_context)} chars\n"
                 
                 self._context.append(
                     MessageBuilder.create_system_message(system_prompt)
@@ -1100,7 +1294,32 @@ class StreamingAgent:
             try:
                 action = parse_action(action_str)
             except ValueError:
-                action = finish(message=action_str)
+                if self.skill_mode == "off":
+                    action = finish(message=action_str)
+                else:
+                    error_msg = (
+                        "模型没有输出合法的 AutoGLM 动作。请输出 "
+                        '`do(action="Launch", app="飞书")`、'
+                        '`do(action="Tap", element=[x, y])` 或 '
+                        '`finish(message="...")`，不要只输出自然语言计划。'
+                    )
+                    action_log += f"\n### ⚠️ 动作格式错误\n{error_msg}\n\n模型原始输出：\n```\n{action_str}\n```\n"
+                    self._context[-1] = MessageBuilder.remove_images_from_message(self._context[-1])
+                    self._context.append(
+                        MessageBuilder.create_assistant_message(
+                            f"<think>{thinking}</think><answer>{action_str}</answer>"
+                        )
+                    )
+                    self._context.append(
+                        MessageBuilder.create_user_message(
+                            text=(
+                                f"{error_msg}\n\n"
+                                "请基于当前任务继续，下一条回复必须只给出一个可执行动作。"
+                            )
+                        )
+                    )
+                    yield thinking_log, action_log, screenshot_img
+                    return {"finished": False, "thinking_log": thinking_log, "action_log": action_log}
             
             action_log += f"\n### 🎯 执行动作\n```json\n{json.dumps(action, ensure_ascii=False, indent=2)}\n```\n"
             yield thinking_log, action_log, screenshot_img
@@ -1113,6 +1332,18 @@ class StreamingAgent:
             if is_takeover:
                 takeover_msg = action.get("message", "需要用户人工操作")
                 action_log += f"\n\n⏸️ **需要人工介入**: {takeover_msg}\n"
+                if takeover_retry_block:
+                    action_log += (
+                        "⛔ 上一次人工接管后模型仍然请求接管，当前任务将停止，"
+                        "避免反复卡在同一个敏感/不可截图页面。\n"
+                    )
+                    yield thinking_log, action_log, screenshot_img
+                    return {
+                        "finished": False,
+                        "thinking_log": thinking_log,
+                        "action_log": action_log,
+                        "takeover_requested": True,
+                    }
                 action_log += f"👉 请在手机上完成操作（如登录、验证码等），然后点击 **继续执行** 按钮\n"
                 yield thinking_log, action_log, screenshot_img
             
@@ -1153,6 +1384,19 @@ class StreamingAgent:
                 )
             except Exception:
                 pass  # 记忆追踪失败不影响主流程
+
+        if self.tracer:
+            try:
+                trace_action = _trace_action_from_runtime_locals(locals())
+                self.tracer.record_step(
+                    step=self._step_count,
+                    screenshot_base64=screenshot.base64_data,
+                    model_raw_output=raw_content,
+                    action=trace_action,
+                    finished=finished,
+                )
+            except Exception:
+                pass
         
         if finished:
             action_log += f"\n\n🎉 **任务完成**: {result.message or '已完成'}"
@@ -1164,10 +1408,50 @@ class StreamingAgent:
                     result=result.message or "已完成"
                 )
                 action_log += f"\n🧠 记忆已更新"
+            if self.tracer:
+                try:
+                    self.tracer.end_task(result=result.message or "已完成", total_steps=self._step_count)
+                except Exception:
+                    pass
+            if self.skill_runtime:
+                action_log += self._finish_skill_runtime(True, result.message or "已完成")
         
         yield thinking_log, action_log, screenshot_img
         
-        return {"finished": finished, "thinking_log": thinking_log, "action_log": action_log}
+        return {
+            "finished": finished,
+            "thinking_log": thinking_log,
+            "action_log": action_log,
+            "takeover_requested": bool(locals().get("is_takeover", False)),
+        }
+
+    def _finish_skill_runtime(self, success: bool, result: str) -> str:
+        """Finalize skill runtime and render a short WebUI summary."""
+        if not self.skill_runtime:
+            return ""
+        try:
+            finish_result = self.skill_runtime.finish(
+                task=self._original_task,
+                success=success,
+                result=result,
+                trace_path=getattr(self.tracer, "episode_dir", None) if self.tracer else None,
+            )
+        except Exception as e:
+            return f"\n🧩 技能运行收尾失败: {e}"
+
+        lines = [f"\n🧩 **技能库更新:** {finish_result.summary or '已记录'}"]
+        if finish_result.feedback:
+            lines.append("**Verifier feedback:**")
+            lines.append("```json")
+            lines.append(json.dumps(finish_result.feedback, ensure_ascii=False, indent=2))
+            lines.append("```")
+        if finish_result.edits:
+            lines.append("**技能修订:**")
+            for edit in finish_result.edits:
+                file_name = edit.get("file") or edit.get("path") or "unknown"
+                event = edit.get("event", "edit")
+                lines.append(f"- `{file_name}` ({event})")
+        return "\n".join(lines) + "\n"
     
     def _inject_memory_into_context(self, memory_context: str):
         """
@@ -1233,6 +1517,69 @@ class StreamingAgent:
         return "", content
 
 
+def _trace_action_from_runtime_locals(values: dict[str, Any]) -> dict[str, Any]:
+    """Convert the branch-specific parsed action into a trace-friendly dict."""
+    if isinstance(values.get("action"), dict):
+        return values["action"]
+    if isinstance(values.get("action_for_log"), dict):
+        return values["action_for_log"]
+
+    qwenvl_action = values.get("qwenvl_action")
+    if qwenvl_action is not None:
+        try:
+            from phone_agent.actions.handler_qwenvl import convert_qwenvl_to_autoglm
+            return convert_qwenvl_to_autoglm(qwenvl_action)
+        except Exception:
+            pass
+
+    uitars_action = values.get("uitars_action")
+    if uitars_action is not None:
+        try:
+            from phone_agent.actions.handler_uitars import convert_uitars_to_autoglm
+            return convert_uitars_to_autoglm(uitars_action)
+        except Exception:
+            pass
+
+    parsed = (
+        values.get("guiowl_action")
+        or values.get("maiui_action")
+        or values.get("qwenvl_action")
+        or values.get("uitars_action")
+    )
+    if parsed is None:
+        return {"_metadata": "unknown"}
+    return {
+        "_metadata": "finish"
+        if getattr(parsed, "action_type", "") in {"finish", "finished", "terminate", "answer"}
+        else "do",
+        "action_type": getattr(parsed, "action_type", "unknown"),
+        **(getattr(parsed, "params", {}) or {}),
+    }
+
+
+def _screenshot_blocker_message(screenshot: Any) -> str:
+    """Explain screenshot failures before the model sees a black fallback image."""
+    if screenshot is None:
+        return "❌ **截图失败**：没有获取到截图对象，请检查设备连接。"
+
+    error_message = str(getattr(screenshot, "error_message", "") or "").strip()
+    is_sensitive = bool(getattr(screenshot, "is_sensitive", False))
+    if is_sensitive:
+        detail = f"\n\n底层信息: `{error_message}`" if error_message else ""
+        return (
+            "⏸️ **当前屏幕无法截图**：设备报告该页面可能禁止截图或需要人工处理。"
+            "请先在手机上完成登录/验证/解锁并进入可截图页面，然后重新发起任务。"
+            f"{detail}"
+        )
+    if error_message:
+        return (
+            "❌ **设备截图失败**：当前不是模型判断出的敏感屏幕，而是底层设备连接或截图命令失败。"
+            f"\n\n底层信息: `{error_message}`\n\n"
+            "请重新连接设备或重启 HDC/ADB 会话后再执行任务。"
+        )
+    return ""
+
+
 # 全局流式 Agent
 streaming_agent: StreamingAgent | None = None
 
@@ -1249,6 +1596,11 @@ def execute_task(
     model_type: str = "auto",  # 模型类型参数
     user_id: str = "default",  # 用户 ID（用于记忆系统）
     lang: str = "cn",  # Prompt 语言 (cn/en)
+    skill_mode: str = "off",
+    skills_dir: str = "skill_store",
+    skill_retrieval_threshold: float = 0.35,
+    skill_max_context_chars: int = 6000,
+    skill_max_iterations: int = 2,
 ) -> Generator[tuple[str, str, Image.Image | None, gr.update], None, None]:
     """执行任务并流式输出结果"""
     global streaming_agent, app_state
@@ -1290,13 +1642,26 @@ def execute_task(
             device_id=device_id.strip() if device_id.strip() else None,
             verbose=True,
             lang=lang,
+            skill_mode=skill_mode,
+            skills_dir=skills_dir.strip() or "skill_store",
+            skill_retrieval_threshold=float(skill_retrieval_threshold),
+            skill_max_context_chars=int(skill_max_context_chars),
+            skill_max_iterations=int(skill_max_iterations),
+            skill_generator_mode="auto",
+            skill_verifier_mode="auto",
+            skill_revision_mode="auto",
         )
     
     # 创建流式 Agent，传入模型类型和用户 ID（用于记忆系统）
     streaming_agent = StreamingAgent(
         model_config, agent_config, dt,
         model_type=model_type,
-        user_id=user_id.strip() or "default"
+        user_id=user_id.strip() or "default",
+        skill_mode=skill_mode,
+        skills_dir=skills_dir.strip() or "skill_store",
+        skill_retrieval_threshold=float(skill_retrieval_threshold),
+        skill_max_context_chars=int(skill_max_context_chars),
+        skill_max_iterations=int(skill_max_iterations),
     )
     
     try:
@@ -1532,6 +1897,94 @@ def import_memories_json(user_id: str, json_str: str) -> str:
         return f"❌ 导入失败: {e}"
 
 
+# ==================== 自进化技能库功能 ====================
+def _get_skill_runtime_for_ui(skills_dir: str):
+    """Create a lightweight skill runtime for library inspection."""
+    if not HAS_SKILLS or PhoneAgentSkillRuntime is None:
+        return None
+    try:
+        runtime = PhoneAgentSkillRuntime(
+            mode="reuse",
+            store_dir=skills_dir.strip() or "skill_store",
+            retrieval_threshold=0.35,
+            max_context_chars=6000,
+            max_iterations=2,
+            require_review=False,
+            platform="Android",
+        )
+        return runtime.runtime
+    except Exception as e:
+        print(f"技能库初始化失败: {e}")
+        return None
+
+
+def get_skill_library_stats(skills_dir: str):
+    """Render skill library summary and refresh the skill dropdown."""
+    if not HAS_SKILLS:
+        return "? 自进化技能库模块未安装，请检查 clawgui-skills 目录", gr.update(choices=[], value=None)
+
+    store_dir = skills_dir.strip() or "skill_store"
+    runtime = _get_skill_runtime_for_ui(store_dir)
+    if not runtime:
+        return "? 无法初始化技能库，请检查路径是否可写", gr.update(choices=[], value=None)
+
+    summaries = runtime.list_skill_summaries()
+    choices = [(item.get("display_name") or item.get("skill_id"), item.get("skill_id")) for item in summaries]
+    if not summaries:
+        return (
+            f"# 🧩 自进化技能库统计\n\n"
+            f"- **存储目录**: `{store_dir}`\n"
+            f"- **技能包数量**: 0\n\n"
+            "当前还没有技能包。开启 `evolve` 模式执行任务后，系统会在没有命中可复用技能时自动构建初始技能包。",
+            gr.update(choices=[], value=None),
+        )
+
+    total_usage = sum(item.get("usage_count", 0) for item in summaries)
+    total_success = sum(item.get("success_count", 0) for item in summaries)
+    total_revisions = sum(item.get("revision_count", 0) for item in summaries)
+    success_rate = round(total_success / total_usage, 4) if total_usage else 0.0
+
+    result = f"""# 🧩 自进化技能库统计
+
+## 基本信息
+- **存储目录**: `{store_dir}`
+- **技能包数量**: {len(summaries)}
+- **累计使用次数**: {total_usage}
+- **累计成功次数**: {total_success}
+- **整体成功率**: {success_rate}
+- **累计修订次数**: {total_revisions}
+
+## 技能包列表
+"""
+    for item in summaries:
+        apps = ", ".join(item.get("domain_app") or []) or "-"
+        result += (
+            f"\n### {item.get('display_name') or item.get('skill_id')}\n"
+            f"- **ID**: `{item.get('skill_id')}`\n"
+            f"- **Intent**: {item.get('task_intent', '-')}\n"
+            f"- **Apps**: {apps}\n"
+            f"- **Usage**: {item.get('usage_count', 0)} | "
+            f"**Success rate**: {item.get('success_rate', 0.0)} | "
+            f"**Revisions**: {item.get('revision_count', 0)}\n"
+        )
+
+    selected = choices[0][1] if choices else None
+    return result, gr.update(choices=choices, value=selected)
+
+
+def get_skill_detail(skills_dir: str, skill_id: str) -> str:
+    """Render a readable skill package detail page."""
+    if not HAS_SKILLS:
+        return "? 自进化技能库模块未安装，请检查 clawgui-skills 目录"
+    if not skill_id:
+        return "请先选择一个技能包"
+
+    runtime = _get_skill_runtime_for_ui(skills_dir.strip() or "skill_store")
+    if not runtime:
+        return "? 无法初始化技能库，请检查路径是否可写"
+    return runtime.render_skill_detail(skill_id)
+
+
 # ==================== 构建 Gradio 界面 ====================
 def create_ui():
     """创建 Gradio 界面"""
@@ -1733,6 +2186,53 @@ def create_ui():
                         value=os.getenv("PHONE_AGENT_USER_ID", "default"),
                         placeholder="default",
                         info="不同用户 ID 对应独立的记忆库，用于多用户场景"
+                    )
+
+                gr.Markdown("### 🧩 自进化技能模式")
+
+                with gr.Row():
+                    skill_mode_config = gr.Dropdown(
+                        label="技能模式",
+                        choices=[
+                            ("关闭", "off"),
+                            ("仅记录轨迹", "trace"),
+                            ("检索复用", "reuse"),
+                            ("自进化", "evolve"),
+                        ],
+                        value=os.getenv("PHONE_AGENT_SKILL_MODE", "off"),
+                        info="reuse 会按需注入技能上下文；evolve 会在失败后修订技能包"
+                    )
+                    skills_dir_config = gr.Textbox(
+                        label="技能库目录",
+                        value=os.getenv("PHONE_AGENT_SKILLS_DIR", "skill_store"),
+                        placeholder="skill_store",
+                        info="保存结构化技能包和演化记录的目录"
+                    )
+
+                with gr.Row():
+                    skill_threshold_config = gr.Slider(
+                        label="检索阈值",
+                        minimum=0.0,
+                        maximum=1.0,
+                        value=float(os.getenv("PHONE_AGENT_SKILL_THRESHOLD", "0.35")),
+                        step=0.05,
+                        info="越高越保守，越低越容易复用已有技能"
+                    )
+                    skill_context_chars_config = gr.Slider(
+                        label="最大技能上下文字符数",
+                        minimum=1000,
+                        maximum=20000,
+                        value=int(os.getenv("PHONE_AGENT_SKILL_MAX_CONTEXT", "6000")),
+                        step=500,
+                        info="控制注入 prompt 的技能内容长度"
+                    )
+                    skill_iterations_config = gr.Slider(
+                        label="自进化最大迭代",
+                        minimum=1,
+                        maximum=5,
+                        value=int(os.getenv("PHONE_AGENT_SKILL_MAX_ITERATIONS", "2")),
+                        step=1,
+                        info="evolve 模式下失败后即时修订并重试的上限"
                     )
             
             # ==================== 设备管理 Tab ====================
@@ -1970,6 +2470,60 @@ def create_ui():
                     inputs=[memory_user_id],
                     outputs=[export_output]
                 )
+
+            # ==================== 自进化技能库 Tab ====================
+            with gr.Tab("🧩 自进化技能库"):
+                gr.Markdown("""
+                ### 自进化技能库
+
+                技能库保存 Agent 在 GUI 任务中沉淀出的可复用操作经验，并在 Skill Mode 下按需检索、注入和修订。
+
+                **功能特点**：
+                - 🧩 构建结构化技能包：`plan.md`、`backup.md`、`recover.md`、`failure_examples/`
+                - 🔎 执行前按需检索：只注入相关技能，减少上下文占用
+                - ⚡ 即时技能修订：失败后根据 verifier feedback 更新对应技能文件
+                - 🧭 定向修复错误：规划、定位、恢复问题分别写入不同文档
+                - 📚 积累失败案例：可查看每次失败的 diagnosis 与 suggestions
+                - 🕘 保留演化轨迹：记录每次使用、修订和版本快照
+                """)
+
+                with gr.Row():
+                    skill_store_view = gr.Textbox(
+                        label="技能库目录",
+                        value=os.getenv("PHONE_AGENT_SKILLS_DIR", "skill_store"),
+                        placeholder="skill_store",
+                        info="默认与配置管理里的技能库目录保持一致"
+                    )
+                    refresh_skills_btn = gr.Button("🔄 刷新技能库", variant="primary")
+
+                skill_library_output = gr.Markdown("点击「刷新技能库」查看技能包统计")
+
+                gr.Markdown("---")
+                gr.Markdown("### 查看技能包")
+
+                with gr.Row():
+                    skill_select = gr.Dropdown(
+                        label="技能包",
+                        choices=[],
+                        value=None,
+                        interactive=True,
+                        info="刷新后从已有技能包中选择"
+                    )
+                    show_skill_btn = gr.Button("📖 查看技能", variant="secondary")
+
+                skill_detail_output = gr.Markdown("")
+
+                refresh_skills_btn.click(
+                    fn=get_skill_library_stats,
+                    inputs=[skill_store_view],
+                    outputs=[skill_library_output, skill_select]
+                )
+
+                show_skill_btn.click(
+                    fn=get_skill_detail,
+                    inputs=[skill_store_view, skill_select],
+                    outputs=[skill_detail_output]
+                )
             
             # ==================== 对话控制 Tab ====================
             with gr.Tab("💬 对话控制"):
@@ -2027,7 +2581,10 @@ def create_ui():
                         base_url, api_key, model_name,
                         max_steps, wda_url, model_type,
                         memory_user_id_config,  # 用户 ID（记忆系统）
-                        prompt_lang  # Prompt 语言 (cn/en)
+                        prompt_lang,  # Prompt 语言 (cn/en)
+                        skill_mode_config, skills_dir_config,
+                        skill_threshold_config, skill_context_chars_config,
+                        skill_iterations_config,
                     ],
                     outputs=[thinking_output, action_output, screenshot_display, start_btn]
                 )
@@ -2210,6 +2767,35 @@ def create_ui():
                 
                 > 💡 **提示**：记忆系统会随着使用自动变得更智能，无需手动配置
                 
+                ## 🧩 自进化技能库
+
+                ClawGUI-Agent 集成了论文《Reflect, Revise, Reuse: Training-Free Skill Evolution for GUI Agents》提出并在 MobileWorld、AndroidWorld、OSWorld 上验证过的自进化技能架构。它不是固定脚本库，而是在执行 GUI 任务时按需检索技能、构建技能包，并在失败后依据反馈持续修订。
+
+                ### 功能特点
+
+                - **结构化技能包**：每个技能由 `meta_info.json`、`docs/plan.md`、`docs/backup.md`、`docs/recover.md`、`failure_examples/` 和版本记录组成
+                - **按需技能检索**：只有选择 `reuse` 或 `evolve` 模式时才检索并注入技能上下文，避免普通模式额外占用 prompt
+                - **即时技能修订**：`evolve` 模式下失败后会生成 verifier feedback，并将规划、定位、恢复问题写入对应技能文件
+                - **失败案例积累**：失败会保存为 `failure_XXX.md`，后续查看技能包时可以直接看到完整案例
+                - **可视化查看**：在「自进化技能库」页面刷新技能库后，可以选择技能包查看 `plan.md`、revision、backup、recovery 和 failure examples
+
+                ### Skill Mode
+
+                - `off`：关闭技能库，执行流程与普通 PhoneAgent 保持一致
+                - `trace`：仅记录轨迹，不检索、不注入技能上下文
+                - `reuse`：检索已有技能包并注入精简技能上下文
+                - `evolve`：无匹配时构建初始技能包；失败时诊断并修订技能文件
+
+                ### 使用方法
+
+                1. 在「配置管理」中选择 `reuse` 或 `evolve`，设置技能库目录，例如 `skill_store`
+                2. 在「对话控制」执行任务，动作日志会显示技能检索、构建、注入和修订结果
+                3. 在「自进化技能库」页面点击「刷新技能库」，查看技能包统计和演化状态
+                4. 选择具体技能包后点击「查看技能」，检查 `plan.md:`、`backup.md:`、`recover.md:`、revision 和失败案例
+
+
+                > 提示：技能模式是可选功能；未开启时不会向 PhoneAgent prompt 注入技能内容。
+
                 ## 🔗 更多资源
                 
                 - [项目 GitHub](https://github.com/THUDM/Open-AutoGLM)
