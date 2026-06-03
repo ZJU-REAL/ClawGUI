@@ -170,6 +170,7 @@ ClawGUI-APP runs the full ClawGUI "brain + GUI agent" stack directly on one Andr
 - **Phone-only workflow** — No desktop coordinator required; a device with Shizuku is enough
 - **Two-agent design** — Brain LLM handles planning and tool orchestration, phone agent handles screen understanding and actions
 - **Multi-model support** — AutoGLM, MAI-UI, GUI-Owl, Qwen-VL, UI-TARS and more via OpenAI-compatible API
+- **Voice input (STT)** — Tap-to-record microphone with OpenAI-compatible speech-to-text transcription (SiliconFlow, Groq Whisper, etc.)
 - **Conversation + automation** — Sessions, long-term memory, external channels (Feishu), and trace replay
 - **Built for real usage** — Floating overlay status, built-in IME, session persistence, and diagnostics
 

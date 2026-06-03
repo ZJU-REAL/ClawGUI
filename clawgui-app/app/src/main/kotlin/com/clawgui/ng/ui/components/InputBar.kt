@@ -70,6 +70,7 @@ fun ChatInputBar(
     onVoice: () -> Unit,
     onCamera: () -> Unit,
     onModel: () -> Unit,
+    voiceState: com.clawgui.ng.ui.vm.ChatViewModel.VoiceState = com.clawgui.ng.ui.vm.ChatViewModel.VoiceState.IDLE,
     modifier: Modifier = Modifier,
 ) {
     val canSend = value.isNotBlank() && !isExecuting
@@ -115,7 +116,30 @@ fun ChatInputBar(
                     Spacer(Modifier.width(2.dp))
                     if (value.isBlank() && !isExecuting) {
                         IconCircleButton(Icons.Rounded.CameraAlt, "拍照", onClick = onCamera, tonal = false)
-                        IconCircleButton(Icons.Rounded.Mic, "语音", onClick = onVoice, tonal = false)
+                        when (voiceState) {
+                            com.clawgui.ng.ui.vm.ChatViewModel.VoiceState.RECORDING -> {
+                                IconCircleButton(
+                                    Icons.Rounded.GraphicEq,
+                                    "正在录音…点击结束",
+                                    onClick = onVoice,
+                                    tonal = true,
+                                )
+                            }
+                            com.clawgui.ng.ui.vm.ChatViewModel.VoiceState.TRANSCRIBING -> {
+                                Box(
+                                    modifier = Modifier.size(40.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    androidx.compose.material3.CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp,
+                                    )
+                                }
+                            }
+                            else -> {
+                                IconCircleButton(Icons.Rounded.Mic, "语音", onClick = onVoice, tonal = false)
+                            }
+                        }
                     }
                     SendButton(canSend, isExecuting, onSend, onStop)
                 }

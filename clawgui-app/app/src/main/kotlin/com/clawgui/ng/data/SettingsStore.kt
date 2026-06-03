@@ -170,6 +170,26 @@ class SettingsStore(context: Context) {
         get() = plain.getBoolean("notify_verbose", true)
         set(v) { plain.edit().putBoolean("notify_verbose", v).apply() }
 
+    // ── STT (Speech-to-Text) ────────────────────────────────────────────
+
+    var sttBaseUrl: String
+        get() = plain.getString("stt.baseUrl", "https://api.siliconflow.cn/v1").orEmpty()
+            .ifBlank { "https://api.siliconflow.cn/v1" }
+        set(v) { plain.edit().putString("stt.baseUrl", v.trim()).apply() }
+
+    var sttApiKey: String
+        get() = secrets.getString("stt.apiKey", "").orEmpty()
+        set(v) { secrets.edit().putString("stt.apiKey", v.trim()).apply() }
+
+    var sttModel: String
+        get() = plain.getString("stt.model", "FunAudioLLM/SenseVoiceSmall").orEmpty()
+            .ifBlank { "FunAudioLLM/SenseVoiceSmall" }
+        set(v) { plain.edit().putString("stt.model", v.trim()).apply() }
+
+    var sttLanguage: String
+        get() = plain.getString("stt.language", "zh").orEmpty().ifBlank { "zh" }
+        set(v) { plain.edit().putString("stt.language", v.trim()).apply() }
+
     // ── Floating Plan + Trace overlay ─────────────────────────────────
 
     var overlayEnabled: Boolean

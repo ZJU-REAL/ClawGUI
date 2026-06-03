@@ -143,6 +143,37 @@ class SettingsRepository(private val store: SettingsStore) {
         store.overlayEnabled = v
     }
 
+    // ── STT (Speech-to-Text) ────────────────────────────────────────────
+
+    private val _sttBaseUrl = MutableStateFlow(store.sttBaseUrl)
+    val sttBaseUrl: StateFlow<String> = _sttBaseUrl
+    fun setSttBaseUrl(v: String) {
+        _sttBaseUrl.value = v.ifBlank { "https://api.siliconflow.cn/v1" }
+        store.sttBaseUrl = v
+    }
+
+    private val _sttApiKeySet = MutableStateFlow(store.sttApiKey.isNotBlank())
+    val sttApiKeySet: StateFlow<Boolean> = _sttApiKeySet
+    fun setSttApiKey(v: String) {
+        store.sttApiKey = v
+        _sttApiKeySet.value = v.isNotBlank()
+    }
+    fun sttApiKey(): String = store.sttApiKey
+
+    private val _sttModel = MutableStateFlow(store.sttModel)
+    val sttModel: StateFlow<String> = _sttModel
+    fun setSttModel(v: String) {
+        _sttModel.value = v.ifBlank { "FunAudioLLM/SenseVoiceSmall" }
+        store.sttModel = v
+    }
+
+    private val _sttLanguage = MutableStateFlow(store.sttLanguage)
+    val sttLanguage: StateFlow<String> = _sttLanguage
+    fun setSttLanguage(v: String) {
+        _sttLanguage.value = v.ifBlank { "zh" }
+        store.sttLanguage = v
+    }
+
     private val _overlayAlphaPct = MutableStateFlow(store.overlayAlphaPct)
     val overlayAlphaPct: StateFlow<Int> = _overlayAlphaPct
     fun setOverlayAlphaPct(v: Int) {
