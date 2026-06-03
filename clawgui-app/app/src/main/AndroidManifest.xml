@@ -19,6 +19,8 @@
          picker) doesn't require it — it returns a one-shot URI grant. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Voice input: record audio for STT transcription. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <queries>
         <intent>

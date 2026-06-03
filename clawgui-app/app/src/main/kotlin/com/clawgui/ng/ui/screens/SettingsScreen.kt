@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.OpenInNew
@@ -123,6 +124,7 @@ fun SettingsScreen(onClose: () -> Unit) {
                 when (page) {
                     SettingsPage.Home -> SettingsHomePage(onNavigate = { page = it })
                     SettingsPage.AiModels -> AiModelsPage()
+                    SettingsPage.VoiceInput -> VoiceInputPage()
                     SettingsPage.Channels -> ChannelsPage()
                     SettingsPage.DeviceAuth -> DeviceAuthPage()
                     SettingsPage.Ime -> ImePage()
@@ -141,6 +143,7 @@ fun SettingsScreen(onClose: () -> Unit) {
 private sealed class SettingsPage(val title: String) {
     data object Home : SettingsPage("设置")
     data object AiModels : SettingsPage("AI 模型")
+    data object VoiceInput : SettingsPage("语音识别")
     data object Channels : SettingsPage("外部通道")
     data object DeviceAuth : SettingsPage("设备控制授权")
     data object Ime : SettingsPage("ClawGUI 输入法")
@@ -179,6 +182,7 @@ private fun SettingsHeader(title: String, onBack: () -> Unit) {
 private fun SettingsHomePage(onNavigate: (SettingsPage) -> Unit) {
     val items = listOf(
         SettingsRowSpec("AI 模型", "大脑与视觉模型、API Key", Icons.Rounded.SmartToy, SettingsPage.AiModels),
+        SettingsRowSpec("语音识别", "Whisper STT 服务配置", Icons.Rounded.GraphicEq, SettingsPage.VoiceInput),
         SettingsRowSpec("外部通道", "飞书等外部接入", Icons.Rounded.Hub, SettingsPage.Channels),
         SettingsRowSpec("设备控制授权", "无线调试 / Shizuku 二选一", Icons.Rounded.VerifiedUser, SettingsPage.DeviceAuth),
         SettingsRowSpec("ClawGUI 输入法", "允许 Agent 输入文字", Icons.Rounded.Keyboard, SettingsPage.Ime),
@@ -455,6 +459,109 @@ private fun ProviderEditDialog(
             androidx.compose.material3.TextButton(onClick = onDismiss) { Text("取消") }
         },
     )
+}
+
+@Composable
+private fun VoiceInputPage() {
+    val settings = RuntimeContainer.settings
+    val sttKeySet by settings.sttApiKeySet.collectAsStateWithLifecycle()
+    val sttBaseUrl by settings.sttBaseUrl.collectAsStateWithLifecycle()
+    val sttModel by settings.sttModel.collectAsStateWithLifecycle()
+    val sttLang by settings.sttLanguage.collectAsStateWithLifecycle()
+
+    var baseUrlInput by remember(sttBaseUrl) { mutableStateOf(sttBaseUrl) }
+    var modelInput by remember(sttModel) { mutableStateOf(sttModel) }
+    var keyInput by remember { mutableStateOf("") }
+    var langInput by remember(sttLang) { mutableStateOf(sttLang) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        SectionLabel("STT 服务配置")
+        InfoCard(
+            "语音输入使用 OpenAI Whisper 兼容接口。推荐:\n" +
+                "• SiliconFlow (国内直连,有免费额度): api.siliconflow.cn/v1\n" +
+                "• Groq (需翻墙,免费): api.groq.com/openai/v1\n" +
+                "• OpenAI (需翻墙): api.openai.com/v1"
+        )
+
+        StatusCard(
+            label = "API Key",
+            value = if (sttKeySet) "已配置" else "未配置 — 语音功能不可用",
+            tone = if (sttKeySet) StatusTone.Ok else StatusTone.Warning,
+        )
+
+        SectionLabel("API Base URL")
+        androidx.compose.material3.OutlinedTextField(
+            value = baseUrlInput,
+            onValueChange = { baseUrlInput = it },
+            label = { Text("Base URL") },
+            placeholder = { Text("https://api.siliconflow.cn/v1") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        androidx.compose.material3.TextButton(
+            onClick = { settings.setSttBaseUrl(baseUrlInput) },
+            enabled = baseUrlInput != sttBaseUrl,
+            modifier = Modifier.align(Alignment.End),
+        ) { Text("保存") }
+
+        SectionLabel("API Key")
+        androidx.compose.material3.OutlinedTextField(
+            value = keyInput,
+            onValueChange = { keyInput = it },
+            label = { Text("API Key") },
+            placeholder = { Text(if (sttKeySet) "••••••(已设置,重填可覆盖)" else "粘贴你的 API Key") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        androidx.compose.material3.TextButton(
+            onClick = {
+                if (keyInput.isNotBlank()) {
+                    settings.setSttApiKey(keyInput)
+                    keyInput = ""
+                }
+            },
+            enabled = keyInput.isNotBlank(),
+            modifier = Modifier.align(Alignment.End),
+        ) { Text("保存 Key") }
+
+        SectionLabel("模型")
+        androidx.compose.material3.OutlinedTextField(
+            value = modelInput,
+            onValueChange = { modelInput = it },
+            label = { Text("Model") },
+            placeholder = { Text("FunAudioLLM/SenseVoiceSmall") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        androidx.compose.material3.TextButton(
+            onClick = { settings.setSttModel(modelInput) },
+            enabled = modelInput != sttModel,
+            modifier = Modifier.align(Alignment.End),
+        ) { Text("保存") }
+
+        SectionLabel("语言")
+        androidx.compose.material3.OutlinedTextField(
+            value = langInput,
+            onValueChange = { langInput = it },
+            label = { Text("Language code") },
+            placeholder = { Text("zh") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        androidx.compose.material3.TextButton(
+            onClick = { settings.setSttLanguage(langInput) },
+            enabled = langInput != sttLang,
+            modifier = Modifier.align(Alignment.End),
+        ) { Text("保存") }
+
+        Spacer(Modifier.height(24.dp))
+    }
 }
 
 @Composable

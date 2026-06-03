@@ -26,12 +26,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
-
-/**
- * The chat surface state. Holds the live message list, current session, draft
- * input, and demo execution simulator. Real Brain/Phone agent calls will be
- * routed through the same flows once the runtime is ported.
- */
 class ChatViewModel(
     private val sessions: SessionRepository = RuntimeContainer.sessions,
 ) : ViewModel() {
@@ -66,6 +60,16 @@ class ChatViewModel(
 
     private var runJob: Job? = null
 
+    // ── Voice recording state ───────────────────────────────────────────
+
+    enum class VoiceState { IDLE, RECORDING, TRANSCRIBING }
+
+    private val _voiceState = MutableStateFlow(VoiceState.IDLE)
+    val voiceState: StateFlow<VoiceState> = _voiceState
+
+    private var audioRecorder: com.clawgui.ng.runtime.media.AudioRecorder? = null
+    private var recordingJob: Job? = null
+
     /**
      * One PhoneAgent per session — keeps screenshot context + adapter history
      * across turns so "继续给 X 发一条" can build on what the first turn did,
@@ -92,6 +96,77 @@ class ChatViewModel(
     }.stateIn(viewModelScope, SharingStarted.Eagerly, HeaderState("ClawGUI", "GLM-5.1"))
 
     fun updateDraft(text: String) { _draft.value = text }
+
+    // ── Voice input ─────────────────────────────────────────────────────
+
+    /**
+     * Toggle voice recording. First call starts recording, second call stops
+     * and transcribes. Handles permission externally — caller must ensure
+     * RECORD_AUDIO is granted before invoking.
+     */
+    fun toggleVoice() {
+        when (_voiceState.value) {
+            VoiceState.IDLE -> startRecording()
+            VoiceState.RECORDING -> stopAndTranscribe()
+            VoiceState.TRANSCRIBING -> {} // ignore taps while transcribing
+        }
+    }
+
+    private fun startRecording() {
+        val recorder = com.clawgui.ng.runtime.media.AudioRecorder(RuntimeContainer.appContext)
+        audioRecorder = recorder
+        _voiceState.value = VoiceState.RECORDING
+        recordingJob = viewModelScope.launch {
+            recorder.start()
+        }
+    }
+
+    private fun stopAndTranscribe() {
+        val file = audioRecorder?.stop() ?: return
+        _voiceState.value = VoiceState.TRANSCRIBING
+
+        viewModelScope.launch {
+            val settings = RuntimeContainer.settings
+            val apiKey = settings.sttApiKey()
+            if (apiKey.isBlank()) {
+                _voiceState.value = VoiceState.IDLE
+                _draft.value = "[语音识别未配置 — 请到「设置 → 语音识别」填写 API Key]"
+                return@launch
+            }
+
+            // Wait for recorder coroutine to finish writing WAV.
+            recordingJob?.join()
+
+            val client = com.clawgui.ng.runtime.stt.SttClient(
+                baseUrl = settings.sttBaseUrl.value,
+                apiKey = apiKey,
+                model = settings.sttModel.value,
+            )
+            val text = try {
+                withContext(Dispatchers.IO) {
+                    client.transcribe(
+                        audioFile = file,
+                        language = settings.sttLanguage.value,
+                    )
+                }
+            } catch (e: Throwable) {
+                android.util.Log.w("Voice", "STT failed", e)
+                "[识别失败: ${e.message?.take(60)}]"
+            } finally {
+                file.delete()
+            }
+            _draft.value = (_draft.value + text).trim()
+            _voiceState.value = VoiceState.IDLE
+        }
+    }
+
+    fun cancelVoice() {
+        audioRecorder?.stop()
+        recordingJob?.cancel()
+        recordingJob = null
+        audioRecorder = null
+        _voiceState.value = VoiceState.IDLE
+    }
 
     /**
      * Persist a freshly-picked image into the app sandbox and stage it as a

@@ -50,7 +50,15 @@ fun ChatScreen(
     val guiMode by com.clawgui.ng.runtime.RuntimeContainer.settings.guiModeEnabled
         .collectAsStateWithLifecycle()
     val pending by vm.pendingAttachments.collectAsStateWithLifecycle()
+    val voiceState by vm.voiceState.collectAsStateWithLifecycle()
     var showAttachSheet by remember { mutableStateOf(false) }
+
+    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) vm.toggleVoice()
+    }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val listState = rememberLazyListState()
     LaunchedEffect(messages.size) {
@@ -98,9 +106,19 @@ fun ChatScreen(
                     // the sheet itself splits camera vs. gallery so a single
                     // entry point keeps the discovery model simple.
                     onAttach = { showAttachSheet = true },
-                    onVoice = { /* TODO speech rec */ },
+                    onVoice = {
+                        val perm = android.Manifest.permission.RECORD_AUDIO
+                        if (androidx.core.content.ContextCompat.checkSelfPermission(context, perm)
+                            == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        ) {
+                            vm.toggleVoice()
+                        } else {
+                            permissionLauncher.launch(perm)
+                        }
+                    },
                     onCamera = { showAttachSheet = true },
                     onModel = onOpenModelPicker,
+                    voiceState = voiceState,
                 )
             }
         },
