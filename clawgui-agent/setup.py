@@ -14,8 +14,9 @@ setup(
     description="AI-powered phone automation framework",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/phone-agent",
+    url="https://github.com/ZJU-REAL/ClawGUI/tree/master/clawgui-agent",
     packages=find_packages(),
+    py_modules=["main"],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
@@ -32,6 +33,7 @@ setup(
     install_requires=[
         "Pillow>=12.0.0",
         "openai>=2.9.0",
+        "gradio>=4.0.0",
     ],
     extras_require={
         "dev": [
